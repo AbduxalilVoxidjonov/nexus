@@ -1,0 +1,467 @@
+/* Nexus Ovoz OS — dizayn (design/Nexus Ovoz OS.dc.html) asosida 1:1 uslublar */
+
+html, body { margin:0; padding:0; background:#07080a; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  color:#e4e8ec;
+}
+a { color:#7dd3fc; text-decoration:none; }
+a:hover { color:#bae6fd; }
+button { font-family:inherit; }
+::-webkit-scrollbar { width:8px; height:8px; }
+::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.12); border-radius:8px; }
+::-webkit-scrollbar-track { background:transparent; }
+
+@keyframes nx-wave { 0%,100% { transform: scaleY(0.14); } 50% { transform: scaleY(1); } }
+@keyframes nx-breathe { 0%,100% { opacity:.30; transform:scale(1); } 50% { opacity:.62; transform:scale(1.05); } }
+@keyframes nx-spin { to { transform: rotate(360deg); } }
+@keyframes nx-pulse { 0%,100% { opacity:1; } 50% { opacity:.3; } }
+@keyframes nx-shimmer { 0% { background-position: -180% 0; } 100% { background-position: 180% 0; } }
+@keyframes nx-caret { 0%,49% { opacity:1; } 50%,100% { opacity:0; } }
+@keyframes nx-rise { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform:none; } }
+
+.mono { font-family:'JetBrains Mono', monospace; }
+[hidden] { display:none !important; }
+body.no-anim *, body.no-anim *::before, body.no-anim *::after { animation:none !important; }
+
+/* ── Fon va oyna ─────────────────────────────────────────── */
+.nx-bg {
+  min-height:100vh; padding:0; box-sizing:border-box;
+  background:
+    radial-gradient(1100px 620px at 18% -8%, #12212b 0%, rgba(7,8,10,0) 62%),
+    radial-gradient(900px 560px at 92% 8%, #1a1430 0%, rgba(7,8,10,0) 58%),
+    #07080a;
+  display:flex; justify-content:center;
+}
+/* Desktop rejimi: UI oynani to'liq egallaydi (ichma-ich "oyna" kartasi yo'q) */
+.nx-window {
+  width:100%; max-width:none; min-height:100vh; border-radius:0; overflow:visible;
+  background:rgba(16,18,22,0.82);
+  backdrop-filter:blur(40px); -webkit-backdrop-filter:blur(40px);
+  border:0; box-shadow:none;
+  position:relative; display:flex; flex-direction:column; box-sizing:border-box;
+}
+.nx-window > .nx-stream, .nx-window > .nx-page { flex:1 1 auto; }
+
+/* ── Sarlavha paneli ─────────────────────────────────────── */
+/* Sarlavha paneli: chapda ~78px — haqiqiy macOS yopish/kichraytirish/kattalashtirish tugmalari uchun joy
+   (native oyna fullSizeContentView + shaffof titlebar). Panel oynani surish uchun drag-region. */
+.nx-titlebar {
+  display:flex; align-items:center; gap:16px; padding:12px 18px 10px 78px; min-height:52px; box-sizing:border-box;
+  background:linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.012));
+  flex-wrap:wrap; position:relative;
+  -webkit-app-region:drag; -webkit-user-select:none; user-select:none;
+}
+.nx-titlebar button, .nx-titlebar input, .nx-titlebar .nx-settings, .nx-titlebar .nx-badge { -webkit-app-region:no-drag; }
+body.nx-fullscreen .nx-titlebar { padding-left:18px; }
+.nx-title { display:flex; align-items:baseline; gap:9px; flex:0 0 auto; min-width:0; }
+.nx-title .name { font-size:13px; font-weight:650; letter-spacing:0.02em; color:#eceef1; }
+.nx-title .host { font-family:'JetBrains Mono',monospace; font-size:11px; color:#949ba3; letter-spacing:0.01em; }
+.nx-spacer { flex:1 1 auto; min-width:8px; }
+.nx-titleright { display:flex; align-items:center; gap:10px; flex:0 1 auto; flex-wrap:wrap; }
+
+.nx-badge {
+  display:flex; align-items:center; gap:7px; padding:4px 10px 4px 8px; border-radius:99px;
+  background:rgba(52,211,153,0.10); border:1px solid rgba(52,211,153,0.22);
+  transition:background .3s ease, border-color .3s ease;
+}
+.nx-badge .dot { width:6px; height:6px; border-radius:50%; background:#34d399; animation:nx-pulse 2.4s ease-in-out infinite; }
+.nx-badge .txt { font-size:11px; color:#9fe7c8; letter-spacing:0.01em; white-space:nowrap; }
+.nx-badge.warn { background:rgba(251,191,36,0.10); border-color:rgba(251,191,36,0.24); }
+.nx-badge.warn .dot { background:#fbbf24; animation:nx-pulse 1s ease-in-out infinite; }
+.nx-badge.warn .txt { color:#fde68a; }
+.nx-badge.err { background:rgba(251,113,133,0.10); border-color:rgba(251,113,133,0.24); }
+.nx-badge.err .dot { background:#fb7185; animation:none; }
+.nx-badge.err .txt { color:#fda4af; }
+
+.nx-latency {
+  font-family:'JetBrains Mono',monospace; font-size:11px; color:#7c848d; padding:4px 9px; border-radius:7px;
+  background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.07); white-space:nowrap;
+}
+.nx-clock { font-family:'JetBrains Mono',monospace; font-size:11px; color:#a8afb7; letter-spacing:0.02em; min-width:58px; text-align:right; }
+.nx-iconbtn {
+  display:flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:7px;
+  background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.07); color:#9aa1a9; cursor:pointer; padding:0;
+}
+.nx-iconbtn:hover, .nx-iconbtn.active { background:rgba(255,255,255,0.10); color:#e2e6ea; }
+
+/* Sozlamalar paneli */
+.nx-settings {
+  position:absolute; top:calc(100% + 6px); right:18px; width:270px; padding:10px; border-radius:11px;
+  background:rgba(30,33,38,0.95); backdrop-filter:blur(30px); -webkit-backdrop-filter:blur(30px);
+  border:1px solid rgba(255,255,255,0.11); box-shadow:0 20px 50px -14px rgba(0,0,0,0.8); z-index:40;
+  animation:nx-rise .14s ease-out; display:flex; flex-direction:column; gap:8px;
+}
+.nx-settings .head { font-size:10.5px; letter-spacing:0.12em; color:#949ba3; padding:2px 2px 4px; }
+.nx-settings .row {
+  display:flex; align-items:center; justify-content:space-between; gap:10px; padding:7px 9px; border-radius:8px;
+  background:rgba(255,255,255,0.035); border:1px solid rgba(255,255,255,0.07);
+}
+.nx-settings .row .lbl { font-size:11.5px; color:#dfe3e7; display:flex; flex-direction:column; gap:2px; min-width:0; }
+.nx-settings .row .sub { font-family:'JetBrains Mono',monospace; font-size:10px; color:#8a929b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.nx-settings .row .val { font-family:'JetBrains Mono',monospace; font-size:10.5px; color:#a8afb7; }
+.nx-toggle {
+  position:relative; width:32px; height:18px; border-radius:99px; background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.10);
+  cursor:pointer; padding:0; flex:0 0 auto; transition:background .2s ease;
+}
+.nx-toggle::after {
+  content:""; position:absolute; top:2px; left:2px; width:12px; height:12px; border-radius:50%; background:#f4f6f8;
+  box-shadow:0 1px 3px rgba(0,0,0,0.5); transition:transform .2s ease;
+}
+.nx-toggle.on { background:linear-gradient(90deg,#22d3ee,#818cf8); }
+.nx-toggle.on::after { transform:translateX(14px); }
+.nx-toggle[disabled] { opacity:.5; cursor:default; }
+.nx-minibtn {
+  font-family:inherit; font-size:10.5px; padding:4px 9px; border-radius:7px; cursor:pointer; white-space:nowrap;
+  background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.09); color:#c3cad2;
+}
+.nx-minibtn:hover { background:rgba(255,255,255,0.10); color:#f0f2f5; }
+
+/* ── Tablar ──────────────────────────────────────────────── */
+.nx-tabsbar {
+  display:flex; justify-content:center; padding:0 18px 11px; border-bottom:1px solid rgba(255,255,255,0.07);
+  background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.012));
+}
+.nx-tabs {
+  display:flex; gap:2px; padding:2px; border-radius:9px; background:rgba(255,255,255,0.055);
+  border:1px solid rgba(255,255,255,0.07); flex-wrap:wrap; justify-content:center;
+}
+.nx-tab {
+  font-size:11.5px; padding:5px 13px; border-radius:7px; cursor:pointer; border:1px solid transparent;
+  background:transparent; color:#858d96; box-shadow:none; transition:background .16s ease, color .16s ease; white-space:nowrap;
+}
+.nx-tab.active { border-color:rgba(255,255,255,0.11); background:rgba(255,255,255,0.10); color:#f0f2f5; box-shadow:0 1px 2px rgba(0,0,0,0.35); }
+
+/* ── Ovoz oqimi tabi ─────────────────────────────────────── */
+.nx-stream { display:flex; flex-wrap:wrap; align-items:stretch; gap:1px; background:rgba(255,255,255,0.07); }
+
+.nx-col-left {
+  flex:1 1 280px; min-width:0; background:rgba(13,15,18,0.55); padding:16px 16px 18px; min-height:560px;
+  display:flex; flex-direction:column; gap:12px;
+}
+.nx-sechead { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.nx-sechead .t { font-size:12px; font-weight:600; color:#d6dade; letter-spacing:0.01em; }
+.nx-sechead .c { font-family:'JetBrains Mono',monospace; font-size:10px; color:#949ba3; }
+.nx-filters { display:flex; gap:6px; flex-wrap:wrap; }
+.nx-chip {
+  font-size:10.5px; padding:4px 10px; border-radius:99px; cursor:pointer; transition:all .16s ease;
+  border:1px solid rgba(255,255,255,0.07); background:rgba(255,255,255,0.03); color:#858d96;
+}
+.nx-chip.active { border-color:rgba(34,211,238,0.28); background:rgba(34,211,238,0.12); color:#7dd3fc; }
+
+.nx-log { display:flex; flex-direction:column; gap:8px; overflow-y:auto; overflow-x:hidden; max-height:470px; padding-right:2px; min-width:0; }
+.nx-empty { font-size:11.5px; color:#6f777f; padding:18px 6px; text-align:center; line-height:1.5; }
+.nx-entry {
+  padding:11px 12px; border-radius:11px; background:rgba(255,255,255,0.028); border:1px solid rgba(255,255,255,0.065);
+  animation:nx-rise .22s ease-out;
+}
+.nx-entry.err { background:rgba(251,113,133,0.04); border-color:rgba(251,113,133,0.16); }
+.nx-entry .row { display:flex; align-items:flex-start; gap:10px; }
+.nx-entry .badge {
+  display:flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:8px; flex:0 0 auto;
+  background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.07); color:#9fb0c0;
+}
+.nx-entry.err .badge { background:rgba(251,113,133,0.12); color:#fda4af; }
+.nx-entry .body { flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:6px; }
+.nx-entry .top { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+.nx-entry .speech { font-size:12px; color:#d9dde1; line-height:1.4; overflow-wrap:anywhere; }
+.nx-entry .time { font-family:'JetBrains Mono',monospace; font-size:10px; color:#8a929b; flex:0 0 auto; }
+.nx-entry .intent { font-size:10.5px; color:#8f979f; letter-spacing:0.01em; overflow-wrap:anywhere; }
+.nx-entry .meta { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+.nx-code {
+  font-family:'JetBrains Mono',monospace; font-size:10.5px; color:#a5b4c4; background:rgba(255,255,255,0.055);
+  border:1px solid rgba(255,255,255,0.07); border-radius:6px; padding:3px 7px; overflow-wrap:anywhere;
+}
+.nx-status {
+  display:inline-flex; align-items:center; gap:4px; font-size:10px; padding:2px 7px; border-radius:5px; white-space:nowrap;
+  background:rgba(52,211,153,0.11); border:1px solid rgba(52,211,153,0.22); color:#6ee7b7;
+}
+.nx-status.err { background:rgba(251,113,133,0.12); border-color:rgba(251,113,133,0.24); color:#fda4af; }
+.nx-status.user { background:rgba(34,211,238,0.10); border-color:rgba(34,211,238,0.22); color:#7dd3fc; }
+.nx-status.assist { background:rgba(167,139,250,0.12); border-color:rgba(167,139,250,0.22); color:#c4b5fd; }
+.nx-lat { font-family:'JetBrains Mono',monospace; font-size:10px; color:#8a929b; }
+
+/* Markaz: vizualizator */
+.nx-col-center {
+  flex:1.45 1 330px; min-width:0; background:rgba(10,12,15,0.5); padding:26px 24px 20px;
+  display:flex; flex-direction:column; align-items:center; justify-content:space-between; gap:18px; position:relative; overflow:hidden;
+}
+.nx-statepill {
+  display:flex; align-items:center; gap:8px; padding:5px 12px; border-radius:99px;
+  background:rgba(255,255,255,0.045); border:1px solid rgba(255,255,255,0.08); z-index:2;
+}
+.nx-statedot { width:6px; height:6px; border-radius:50%; background:#7c848d; box-shadow:0 0 10px #7c848d; transition:background .3s ease, box-shadow .3s ease; }
+.nx-statelabel { font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:0.16em; color:#c3cad2; text-transform:uppercase; }
+
+.nx-orbwrap { position:relative; width:100%; display:flex; align-items:center; justify-content:center; flex:1 1 auto; min-height:230px; z-index:2; }
+.nx-aura {
+  position:absolute; width:300px; height:300px; border-radius:50%; pointer-events:none; filter:blur(6px);
+  background:radial-gradient(circle, rgba(255,255,255,0.05), rgba(0,0,0,0) 68%);
+  animation:nx-breathe 5s ease-in-out infinite;
+  transition:background .5s ease;
+}
+.nx-orb {
+  position:relative; width:226px; height:226px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  background:radial-gradient(circle at 34% 26%, rgba(255,255,255,0.085), rgba(255,255,255,0.015) 58%, rgba(255,255,255,0) 72%);
+  border:1px solid rgba(255,255,255,0.11);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.07);
+  backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+  transition:border-color .45s ease, box-shadow .45s ease;
+}
+.nx-spinner {
+  width:46px; height:46px; border-radius:50%; border:2px solid rgba(255,255,255,0.10);
+  border-top-color:#a78bfa; border-right-color:#22d3ee; animation:nx-spin 0.9s linear infinite;
+}
+.nx-bars {
+  display:flex; align-items:center; justify-content:center; gap:4px; height:84px; width:164px;
+  opacity:0.34; transform:scaleY(0.16);
+  transition:opacity .45s ease, transform .55s cubic-bezier(.4,0,.2,1);
+}
+.nx-bars span { display:block; width:4px; border-radius:99px; transform-origin:center; animation:nx-wave .8s ease-in-out infinite; animation-play-state:paused; }
+.nx-bars.live { opacity:1; }
+.nx-bars.live span { animation-play-state:running; }
+.nx-shell { display:flex; flex-direction:column; align-items:center; gap:9px; }
+.nx-shell span { font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.12em; color:#6ee7b7; }
+
+.nx-transwrap { width:100%; max-width:430px; min-height:92px; z-index:2; }
+.nx-transcript {
+  padding:13px 15px; border-radius:13px; background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.06);
+  transition:background .3s ease, border-color .3s ease;
+}
+.nx-transcript.has { background:rgba(255,255,255,0.05); border-color:rgba(255,255,255,0.10); }
+.nx-transcript .lbl { font-size:10px; letter-spacing:0.14em; color:#949ba3; margin-bottom:7px; }
+.nx-transcript .txt { font-size:14.5px; line-height:1.5; color:#e4e8ec; text-wrap:pretty; overflow-wrap:anywhere; }
+.nx-transcript .txt.placeholder { color:#9aa1a9; }
+.nx-caret { margin-left:2px; color:#22d3ee; animation:nx-caret 1s step-end infinite; opacity:0; }
+.nx-caret.on { opacity:1; }
+.nx-intentrow {
+  margin-top:10px; padding-top:9px; border-top:1px solid rgba(255,255,255,0.07);
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+}
+.nx-intentrow .k { font-size:10.5px; color:#8b939c; }
+.nx-intentrow .v {
+  font-family:'JetBrains Mono',monospace; font-size:10.5px; color:#c4b5fd; background:rgba(167,139,250,0.12);
+  border:1px solid rgba(167,139,250,0.22); border-radius:6px; padding:2px 7px; overflow-wrap:anywhere; max-width:100%;
+}
+.nx-intentrow .v.assist { color:#e4e8ec; background:rgba(255,255,255,0.05); border-color:rgba(255,255,255,0.10); font-family:inherit; font-size:11.5px; line-height:1.4; }
+
+.nx-suggest { display:flex; gap:7px; flex-wrap:wrap; justify-content:center; z-index:2; }
+.nx-suggest button {
+  font-size:11px; color:#99a1aa; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07);
+  border-radius:99px; padding:5px 11px; cursor:pointer; transition:all .16s ease;
+}
+.nx-suggest button:hover { background:rgba(255,255,255,0.08); color:#e2e6ea; }
+
+/* O'ng: resurslar */
+.nx-col-right { flex:1 1 270px; min-width:0; background:rgba(13,15,18,0.55); padding:16px; display:flex; flex-direction:column; gap:14px; }
+.nx-col-right > .t { font-size:12px; font-weight:600; color:#d6dade; }
+.nx-rgrid { display:grid; grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); gap:16px 22px; align-content:start; align-items:start; }
+.nx-meters { display:flex; flex-direction:column; gap:12px; min-width:0; }
+.nx-meter { display:flex; flex-direction:column; gap:7px; }
+.nx-meter .hd { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+.nx-meter .lbl { font-size:11.5px; color:#aeb5bd; }
+.nx-meter .val { font-family:'JetBrains Mono',monospace; font-size:11.5px; color:#e4e8ec; }
+.nx-meter .track { height:5px; border-radius:99px; background:rgba(255,255,255,0.07); overflow:hidden; }
+.nx-meter .fill { width:0%; height:100%; border-radius:99px; transition:width .7s cubic-bezier(.4,0,.2,1); }
+.nx-meter .sub { font-family:'JetBrains Mono',monospace; font-size:10px; color:#8a929b; }
+.fill-cpu { background:linear-gradient(90deg,#22d3ee,#38bdf8); }
+.fill-ram { background:linear-gradient(90deg,#a78bfa,#c084fc); }
+.fill-bat { background:linear-gradient(90deg,#34d399,#6ee7b7); }
+.fill-lat { background:linear-gradient(90deg,#fbbf24,#fb7185); }
+
+.nx-block { display:flex; flex-direction:column; gap:9px; min-width:0; }
+.nx-block .hd { font-size:11px; letter-spacing:0.1em; color:#949ba3; }
+.nx-card {
+  display:flex; align-items:center; justify-content:space-between; gap:8px; padding:9px 10px; border-radius:9px;
+  background:rgba(255,255,255,0.035); border:1px solid rgba(255,255,255,0.07);
+}
+.nx-card .col { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.nx-card .n { font-size:11.5px; color:#dfe3e7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.nx-card .s { font-family:'JetBrains Mono',monospace; font-size:10px; color:#8a929b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.nx-card .dot { width:6px; height:6px; border-radius:50%; background:#34d399; flex:0 0 auto; }
+.nx-card .dot.violet { background:#a78bfa; } .nx-card .dot.amber { background:#fbbf24; } .nx-card .dot.red { background:#fb7185; } .nx-card .dot.grey { background:#7c848d; }
+
+.nx-triggers { display:flex; flex-direction:column; gap:8px; min-width:0; }
+.nx-trigger { display:flex; align-items:center; justify-content:space-between; gap:8px; cursor:pointer; border-radius:6px; }
+.nx-trigger:hover .l { color:#e2e6ea; }
+.nx-trigger .l { font-size:11.5px; color:#b6bdc4; transition:color .15s ease; }
+.nx-trigger code {
+  font-family:'JetBrains Mono',monospace; font-size:10px; color:#9aa1a9; background:rgba(255,255,255,0.05);
+  border:1px solid rgba(255,255,255,0.07); border-radius:5px; padding:2px 6px; white-space:nowrap;
+}
+
+.nx-devwrap { position:relative; min-width:0; align-self:end; grid-column:1 / -1; }
+.nx-devbtn {
+  width:100%; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:9px 11px; border-radius:9px;
+  background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.09); cursor:pointer;
+}
+.nx-devbtn:hover { background:rgba(255,255,255,0.08); }
+.nx-devbtn .l { display:flex; align-items:center; gap:8px; min-width:0; }
+.nx-devbtn .n { font-size:11.5px; color:#dfe3e7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.nx-devlist {
+  position:absolute; bottom:calc(100% + 6px); left:0; right:0; padding:5px; border-radius:11px;
+  background:rgba(30,33,38,0.95); backdrop-filter:blur(30px); -webkit-backdrop-filter:blur(30px);
+  border:1px solid rgba(255,255,255,0.11); box-shadow:0 20px 50px -14px rgba(0,0,0,0.8); z-index:20; animation:nx-rise .14s ease-out;
+  max-height:240px; overflow-y:auto;
+}
+.nx-devitem {
+  width:100%; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:7px 9px; border-radius:7px;
+  cursor:pointer; font-size:11.5px; background:transparent; border:1px solid transparent; color:#c3cad2; text-align:left;
+}
+.nx-devitem:hover { background:rgba(255,255,255,0.06); }
+.nx-devitem.sel { background:rgba(34,211,238,0.14); border-color:rgba(34,211,238,0.24); color:#bae6fd; }
+.nx-devitem .chk { font-size:11px; color:#22d3ee; opacity:0; }
+.nx-devitem.sel .chk { opacity:1; }
+.nx-devitem .nm { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+.nx-devitem .nm small { font-family:'JetBrains Mono',monospace; font-size:9.5px; color:#8a929b; margin-left:6px; }
+
+/* ── Tarix tabi ──────────────────────────────────────────── */
+.nx-page { padding:20px 22px 26px; min-height:560px; display:flex; flex-direction:column; gap:14px; }
+.nx-page.metrics { gap:18px; }
+.nx-pagehead { display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.nx-pagehead .t { font-size:13px; font-weight:600; color:#e2e6ea; }
+.nx-pagehead .c { font-family:'JetBrains Mono',monospace; font-size:11px; color:#949ba3; }
+.nx-search {
+  width:100%; box-sizing:border-box; font-family:inherit; font-size:11.5px; color:#e4e8ec; padding:8px 11px; border-radius:9px;
+  background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); outline:none; transition:border-color .2s ease;
+}
+.nx-search::placeholder { color:#6f777f; }
+.nx-search:focus { border-color:rgba(34,211,238,0.35); }
+.nx-table {
+  display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1.3fr) 110px 90px; gap:1px;
+  background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.07); border-radius:11px; overflow:hidden;
+}
+.nx-table .th { padding:9px 12px; background:rgba(255,255,255,0.04); font-size:10.5px; letter-spacing:0.08em; color:#9aa1a9; }
+.nx-table .th.r, .nx-table .td.r { text-align:right; }
+.nx-table .td { padding:11px 12px; background:rgba(13,15,18,0.7); font-size:12px; color:#d5d9de; line-height:1.45; min-width:0; overflow-wrap:anywhere; }
+.nx-table .td code { font-family:'JetBrains Mono',monospace; font-size:11px; color:#a5b4c4; overflow-wrap:anywhere; }
+.nx-table .td.time { font-family:'JetBrains Mono',monospace; font-size:11px; color:#949ba3; }
+.nx-table .td.reply { color:#c3cad2; }
+.nx-table .td.reply .tool { display:block; margin-top:5px; }
+.nx-table .td.wide { grid-column:1 / -1; text-align:center; color:#6f777f; font-size:11.5px; padding:22px; }
+@media (max-width:640px) {
+  .nx-table { grid-template-columns:minmax(0,1fr) minmax(0,1fr) 84px 72px; }
+}
+
+/* ── Ko'rsatkichlar tabi ─────────────────────────────────── */
+.nx-page.metrics > .t { font-size:13px; font-weight:600; color:#e2e6ea; }
+.nx-mgrid { display:grid; grid-template-columns:repeat(auto-fit, minmax(230px,1fr)); gap:14px; }
+.nx-mcard {
+  padding:16px; border-radius:13px; background:rgba(255,255,255,0.035); border:1px solid rgba(255,255,255,0.08);
+  display:flex; flex-direction:column; gap:12px;
+}
+.nx-mcard .lbl { font-size:11.5px; color:#9aa2aa; }
+.nx-mcard .val { font-family:'JetBrains Mono',monospace; font-size:30px; font-weight:500; color:#eef1f4; letter-spacing:-0.02em; }
+.nx-mcard .track { height:6px; border-radius:99px; background:rgba(255,255,255,0.07); overflow:hidden; }
+.nx-mcard .fill { width:0%; height:100%; border-radius:99px; transition:width .7s cubic-bezier(.4,0,.2,1); }
+.nx-mcard .sub { font-family:'JetBrains Mono',monospace; font-size:10.5px; color:#8a929b; }
+.nx-scard {
+  padding:14px 16px; border-radius:13px; background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.07);
+  display:flex; flex-direction:column; gap:6px;
+}
+.nx-scard .lbl { font-size:11px; color:#9aa1a9; }
+.nx-scard .val { font-family:'JetBrains Mono',monospace; font-size:17px; color:#dfe3e7; }
+
+/* ── Pastki qator: faqat markazdagi matn kiritish ────────── */
+.nx-bottom {
+  display:flex; align-items:center; justify-content:center; padding:12px 18px 14px; border-top:1px solid rgba(255,255,255,0.07);
+  background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.045));
+}
+.nx-textin {
+  flex:0 1 720px; width:100%; max-width:720px; min-width:0; box-sizing:border-box; height:48px; font-family:inherit; font-size:15px;
+  color:#e4e8ec; padding:0 18px; border-radius:14px;
+  background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.10); outline:none;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.04); transition:border-color .2s ease, background .2s ease, box-shadow .2s ease;
+}
+.nx-textin::placeholder { color:#6f777f; }
+.nx-textin:focus { border-color:rgba(34,211,238,0.40); background:rgba(255,255,255,0.07); box-shadow:0 0 0 3px rgba(34,211,238,0.10); }
+.nx-minibtn.danger { background:rgba(251,113,133,0.10); border-color:rgba(251,113,133,0.24); color:#fda4af; }
+.nx-minibtn.danger:hover { background:rgba(251,113,133,0.18); color:#fecdd3; }
+
+/* Segment tanlov (sozlamalar: uyg'otish rejimi) */
+.nx-modeseg { display:flex; gap:2px; padding:2px; border-radius:99px; background:rgba(255,255,255,0.055); border:1px solid rgba(255,255,255,0.07); }
+.nx-modeseg button {
+  font-size:10.5px; padding:4px 10px; border-radius:99px; cursor:pointer; border:1px solid transparent; background:transparent; color:#858d96;
+  transition:background .16s ease, color .16s ease; white-space:nowrap;
+}
+.nx-modeseg button.active { border-color:rgba(255,255,255,0.11); background:rgba(255,255,255,0.10); color:#f0f2f5; }
+
+/* Sezgirlik slayderi (sozlamalar popover'ida) */
+.nx-sens { display:flex; align-items:center; gap:9px; min-width:0; flex:1 1 auto; width:100%; }
+.nx-slider { position:relative; flex:1 1 auto; height:22px; display:flex; align-items:center; cursor:pointer; touch-action:none; }
+.nx-slider .track { width:100%; height:6px; border-radius:99px; background:rgba(255,255,255,0.10); overflow:hidden; }
+.nx-slider .fill { width:68%; height:100%; border-radius:99px; background:linear-gradient(90deg,#7dd3fc,#22d3ee); }
+.nx-slider .knob {
+  position:absolute; left:calc(68% - 7px); width:14px; height:14px; border-radius:50%; background:#f4f6f8;
+  box-shadow:0 1px 4px rgba(0,0,0,0.55); pointer-events:none;
+}
+.nx-sens .v { font-family:'JetBrains Mono',monospace; font-size:11px; color:#a8afb7; width:30px; text-align:right; }
+
+/* ── Toastlar ────────────────────────────────────────────── */
+.nx-toasts { position:fixed; right:18px; bottom:18px; display:flex; flex-direction:column; gap:8px; z-index:100; max-width:360px; }
+.nx-toast {
+  padding:9px 12px; border-radius:10px; font-size:11.5px; line-height:1.4; color:#dfe3e7;
+  background:rgba(30,33,38,0.95); backdrop-filter:blur(30px); -webkit-backdrop-filter:blur(30px);
+  border:1px solid rgba(255,255,255,0.11); box-shadow:0 20px 50px -14px rgba(0,0,0,0.8); animation:nx-rise .18s ease-out;
+  overflow-wrap:anywhere;
+}
+.nx-toast.warn { border-color:rgba(251,191,36,0.3); color:#fde68a; }
+.nx-toast.err { border-color:rgba(251,113,133,0.3); color:#fda4af; }
+.nx-toast.ok { border-color:rgba(52,211,153,0.3); color:#9fe7c8; }
+
+@media (max-width:720px) {
+  .nx-bg { padding:0; }
+  .nx-col-left, .nx-col-center, .nx-col-right { min-height:auto; }
+}
+
+/* ── 2-bosqich: tasdiq kartasi, diktovka, wake rejimi ─────── */
+.nx-confirm {
+  display:flex; align-items:flex-start; gap:14px; margin:12px 18px 0; padding:12px 14px; border-radius:13px;
+  background:linear-gradient(180deg, rgba(245,158,11,0.10), rgba(245,158,11,0.05));
+  border:1px solid rgba(245,158,11,0.32); box-shadow:0 0 40px -18px rgba(245,158,11,0.7), inset 0 1px 0 rgba(255,255,255,0.06);
+  animation:nx-rise .22s ease-out; flex-wrap:wrap;
+}
+.nx-confirm .ico {
+  display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:10px; flex:0 0 auto;
+  background:rgba(245,158,11,0.14); border:1px solid rgba(245,158,11,0.30); color:#fbbf24; animation:nx-pulse 1.6s ease-in-out infinite;
+}
+.nx-confirm .body { flex:1 1 260px; min-width:0; display:flex; flex-direction:column; gap:6px; }
+.nx-confirm .head { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+.nx-confirm .head .k { font-size:10px; letter-spacing:0.14em; color:#fcd34d; }
+.nx-confirm .head .ttl { font-family:'JetBrains Mono',monospace; font-size:11px; color:#fde68a; }
+.nx-confirm .line { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.nx-confirm .line .summary { font-size:13px; color:#f3f4f6; line-height:1.4; overflow-wrap:anywhere; }
+.nx-confirm .reason { font-size:11px; color:#c9b283; line-height:1.4; overflow-wrap:anywhere; }
+.nx-confirm .bar { height:4px; border-radius:99px; background:rgba(255,255,255,0.08); overflow:hidden; margin-top:2px; }
+.nx-confirm .bar .fill { height:100%; width:100%; border-radius:99px; background:linear-gradient(90deg,#f59e0b,#fbbf24); transition:width 1s linear; }
+.nx-confirm .acts { display:flex; align-items:center; gap:8px; flex:0 0 auto; align-self:center; flex-wrap:wrap; }
+.nx-confirm .acts button {
+  display:flex; align-items:center; gap:7px; padding:8px 13px; border-radius:9px; cursor:pointer; font-size:11.5px; font-weight:550; transition:all .18s ease; white-space:nowrap;
+}
+.nx-confirm .acts kbd { font-family:'JetBrains Mono',monospace; font-size:10px; opacity:.65; background:rgba(0,0,0,0.22); border-radius:5px; padding:2px 6px; color:inherit; }
+.nx-confirm .acts .yes { background:linear-gradient(135deg,#34d399,#22d3ee); border:1px solid rgba(255,255,255,0.22); color:#06121a; box-shadow:0 0 26px -8px rgba(52,211,153,0.7); }
+.nx-confirm .acts .yes:hover { filter:brightness(1.08); }
+.nx-confirm .acts .no { background:rgba(251,113,133,0.10); border:1px solid rgba(251,113,133,0.24); color:#fda4af; }
+.nx-confirm .acts .no:hover { background:rgba(251,113,133,0.18); }
+.nx-confirm.expiring { border-color:rgba(251,113,133,0.4); }
+.nx-confirm.expiring .head .ttl { color:#fda4af; }
+
+.nx-shell.amber span { color:#fcd34d; }
+
+.nx-dict {
+  display:flex; align-items:center; gap:7px; padding:7px 12px; border-radius:9px; cursor:pointer; font-size:11.5px; white-space:nowrap;
+  background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); color:#b6bdc4; transition:all .2s ease;
+}
+.nx-dict:hover { background:rgba(255,255,255,0.08); }
+.nx-dict.on { background:rgba(168,85,247,0.16); border-color:rgba(168,85,247,0.40); color:#e9d5ff; box-shadow:0 0 22px -8px rgba(168,85,247,0.8); }
+
+.nx-settings .row.col { flex-direction:column; align-items:stretch; gap:7px; }
+.nx-modeseg.full { width:100%; box-sizing:border-box; }
+.nx-modeseg.full button { flex:1 1 0; text-align:center; }
+.nx-nameinput {
+  width:104px; box-sizing:border-box; font-family:inherit; font-size:11.5px; color:#e4e8ec; padding:5px 9px; border-radius:7px;
+  background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.09); outline:none; transition:border-color .2s ease;
+}
+.nx-nameinput:focus { border-color:rgba(34,211,238,0.35); }

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nexus Ovoz OS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%2714%27 fill=%27%2322d3ee%27/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<div class="nx-bg">
+  <div class="nx-window">
+
+    <!-- ── Sarlavha paneli ────────────────────────────────── -->
+    <header class="nx-titlebar">
+      <div class="nx-title">
+        <span class="name">NEXUS OVOZ OS</span>
+        <span class="host">// mahalliy host</span>
+      </div>
+      <div class="nx-spacer"></div>
+      <div class="nx-titleright">
+        <div class="nx-badge err" id="connBadge">
+          <span class="dot"></span>
+          <span class="txt" id="connText">Ulanmoqda…</span>
+        </div>
+        <div class="nx-latency" id="latency">— ms</div>
+        <div class="nx-clock" id="clock">—</div>
+        <button type="button" class="nx-iconbtn" id="settingsBtn" title="Sozlamalar" aria-label="Sozlamalar">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 008.6 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 8.6a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"></path></svg>
+        </button>
+      </div>
+
+      <div class="nx-settings" id="settingsPanel" hidden>
+        <div class="head">SOZLAMALAR</div>
+        <div class="row">
+          <div class="lbl">Yordamchi ismi<span class="sub">"Hey {ism}" uyg'otish so'zi</span></div>
+          <input type="text" class="nx-nameinput" id="setName" placeholder="Nexus" maxlength="24" autocomplete="off">
+        </div>
+        <div class="row col">
+          <div class="lbl">Uyg'otish rejimi<span class="sub" id="setWakeSub">qachon tinglaydi</span></div>
+          <div class="nx-modeseg full" id="wakeSeg">
+            <button type="button" data-wake="always">Doim</button>
+            <button type="button" data-wake="name">Ism bilan</button>
+            <button type="button" data-wake="smart">Aqlli</button>
+          </div>
+        </div>
+        <div class="row">
+          <div class="lbl">Mikrofon<span class="sub" id="setMuteSub">yoniq · ⌥M</span></div>
+          <button type="button" class="nx-toggle on" id="setMute" aria-label="Mikrofon"></button>
+        </div>
+        <div class="row">
+          <div class="lbl">Diktovka<span class="sub" id="setDictSub">nutqni matnga yozish</span></div>
+          <button type="button" class="nx-toggle" id="setDict" aria-label="Diktovka"></button>
+        </div>
+        <div class="row col">
+          <div class="lbl">Sezgirlik<span class="sub">mikrofon VAD bo'sag'asi</span></div>
+          <div class="nx-sens">
+            <div class="nx-slider" id="sensSlider" role="slider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="68" tabindex="0">
+              <div class="track"><div class="fill" id="sensFill"></div></div>
+              <div class="knob" id="sensKnob"></div>
+            </div>
+            <span class="v" id="sensValue">68</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="lbl">Ovoz chiqishi (playback)<span class="sub" id="setPlaybackSub">javob ovozini ijro etish</span></div>
+          <button type="button" class="nx-toggle" id="setPlayback" aria-label="Playback"></button>
+        </div>
+        <div class="row">
+          <div class="lbl">Animatsiyalar<span class="sub">orb, to'lqin, pulse</span></div>
+          <button type="button" class="nx-toggle on" id="setAnim" aria-label="Animatsiyalar"></button>
+        </div>
+        <div class="row">
+          <div class="lbl">Vaqt ko'rsatish<span class="sub">soat: sekundlar bilan</span></div>
+          <button type="button" class="nx-toggle on" id="setSeconds" aria-label="Sekundlar"></button>
+        </div>
+        <div class="row">
+          <div class="lbl">Ulanish<span class="sub" id="setWsUrl">ws://…/ws</span></div>
+          <button type="button" class="nx-minibtn" id="setReconnect">Qayta ulash</button>
+        </div>
+        <div class="row">
+          <div class="lbl">Holat<span class="sub" id="setStateSub">snapshot</span></div>
+          <button type="button" class="nx-minibtn" id="setRefresh">Yangilash</button>
+        </div>
+        <div class="row">
+          <div class="lbl">Hammasini to'xtatish<span class="sub">bajarilayotgan amallar · ⌥⎋</span></div>
+          <button type="button" class="nx-minibtn danger" id="killBtn" title="Barcha bajarilayotgan amallarni to'xtatish (⌥⎋)">To'xtatish</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ── Tablar ─────────────────────────────────────────── -->
+    <div class="nx-tabsbar">
+      <div class="nx-tabs" role="tablist">
+        <button type="button" class="nx-tab active" data-tab="stream" role="tab">Ovoz oqimi</button>
+        <button type="button" class="nx-tab" data-tab="history" role="tab">Buyruqlar tarixi</button>
+        <button type="button" class="nx-tab" data-tab="metrics" role="tab">Tizim ko'rsatkichlari</button>
+      </div>
+    </div>
+
+    <!-- ── Tasdiq kartasi (xavfli amal) ───────────────────── -->
+    <div class="nx-confirm" id="confirmCard" hidden>
+      <div class="ico">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M12 8v4"></path><path d="M12 16h.01"></path></svg>
+      </div>
+      <div class="body">
+        <div class="head"><span class="k">TASDIQ KUTILMOQDA</span><span class="ttl" id="confirmTtl">— s</span></div>
+        <div class="line"><code class="nx-code" id="confirmAction">action</code><span class="summary" id="confirmSummary"></span></div>
+        <div class="reason" id="confirmReason"></div>
+        <div class="bar"><div class="fill" id="confirmBar"></div></div>
+      </div>
+      <div class="acts">
+        <button type="button" class="yes" id="confirmYes">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>
+          <span>Tasdiqlash</span><kbd>⌥ Y</kbd>
+        </button>
+        <button type="button" class="no" id="confirmNo">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18"></path><path d="M6 6l12 12"></path></svg>
+          <span>Bekor qilish</span><kbd>⌥ N</kbd>
+        </button>
+      </div>
+    </div>
+
+    <!-- ══ TAB: Ovoz oqimi ════════════════════════════════ -->
+    <section class="nx-stream" id="tab-stream">
+
+      <!-- Chap: jonli jurnal -->
+      <div class="nx-col-left">
+        <div class="nx-sechead">
+          <span class="t">Jonli buyruqlar jurnali</span>
+          <span class="c"><span id="logCount">0</span> yozuv</span>
+        </div>
+        <div class="nx-filters" id="filters"></div>
+        <div class="nx-log" id="toolLog">
+          <div class="nx-empty">Hali tool chaqiruvlari yo'q.<br>Gapiring yoki pastdagi maydonga buyruq yozing.</div>
+        </div>
+      </div>
+
+      <!-- Markaz: vizualizator -->
+      <div class="nx-col-center">
+        <div class="nx-statepill">
+          <span class="nx-statedot" id="stateDot"></span>
+          <span class="nx-statelabel" id="stateLabel">Kutmoqda</span>
+        </div>
+
+        <div class="nx-orbwrap">
+          <div class="nx-aura" id="aura"></div>
+          <div class="nx-orb" id="orb">
+            <div class="nx-spinner" id="spinner" hidden></div>
+            <div class="nx-bars" id="bars">
+              <span style="height:12px; background:linear-gradient(180deg,#a78bfa,#818cf8); animation-duration:.70s; animation-delay:0s;"></span>
+              <span style="height:18px; background:linear-gradient(180deg,#b18cfa,#8b8cf9); animation-duration:.86s; animation-delay:.05s;"></span>
+              <span style="height:26px; background:linear-gradient(180deg,#bb8dfa,#958cf9); animation-duration:.74s; animation-delay:.10s;"></span>
+              <span style="height:34px; background:linear-gradient(180deg,#c58ef9,#9f8dfa); animation-duration:.92s; animation-delay:.15s;"></span>
+              <span style="height:44px; background:linear-gradient(180deg,#d08ff7,#a98efa); animation-duration:.78s; animation-delay:.20s;"></span>
+              <span style="height:54px; background:linear-gradient(180deg,#dc90f5,#b38ffb); animation-duration:.96s; animation-delay:.25s;"></span>
+              <span style="height:62px; background:linear-gradient(180deg,#e879f9,#bd90fb); animation-duration:.72s; animation-delay:.30s;"></span>
+              <span style="height:70px; background:linear-gradient(180deg,#d07af7,#9a9dfb); animation-duration:.88s; animation-delay:.35s;"></span>
+              <span style="height:76px; background:linear-gradient(180deg,#a78bfa,#5cb0fa); animation-duration:.76s; animation-delay:.40s;"></span>
+              <span style="height:80px; background:linear-gradient(180deg,#7aa8fb,#3ec0f8); animation-duration:.94s; animation-delay:.45s;"></span>
+              <span style="height:84px; background:linear-gradient(180deg,#38bdf8,#22d3ee); animation-duration:.68s; animation-delay:.50s;"></span>
+              <span style="height:80px; background:linear-gradient(180deg,#4ab6f8,#2fcbef); animation-duration:.90s; animation-delay:.55s;"></span>
+              <span style="height:76px; background:linear-gradient(180deg,#6aa9fa,#41bdf5); animation-duration:.74s; animation-delay:.60s;"></span>
+              <span style="height:70px; background:linear-gradient(180deg,#8f9cfb,#5eb0f9); animation-duration:.98s; animation-delay:.65s;"></span>
+              <span style="height:62px; background:linear-gradient(180deg,#b18cfa,#7ba4fb); animation-duration:.70s; animation-delay:.70s;"></span>
+              <span style="height:54px; background:linear-gradient(180deg,#c58ef9,#8f9cfb); animation-duration:.86s; animation-delay:.75s;"></span>
+              <span style="height:44px; background:linear-gradient(180deg,#d48ff6,#a294fb); animation-duration:.78s; animation-delay:.80s;"></span>
+              <span style="height:34px; background:linear-gradient(180deg,#c08df9,#9590fa); animation-duration:.92s; animation-delay:.85s;"></span>
+              <span style="height:26px; background:linear-gradient(180deg,#ab8bfa,#8a8df9); animation-duration:.72s; animation-delay:.90s;"></span>
+              <span style="height:18px; background:linear-gradient(180deg,#9d8cfb,#818cf8); animation-duration:.88s; animation-delay:.95s;"></span>
+              <span style="height:12px; background:linear-gradient(180deg,#8f8dfc,#7c8bf7); animation-duration:.80s; animation-delay:1s;"></span>
+            </div>
+            <div class="nx-shell amber" id="confirmIcon" hidden>
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M9.5 9.5a2.5 2.5 0 015 0c0 1.5-2.5 2-2.5 3.5"></path><path d="M12 16.5h.01"></path></svg>
+              <span>TASDIQ</span>
+            </div>
+            <div class="nx-shell" id="shellIcon" hidden>
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l6-6-6-6"></path><path d="M12 19h8"></path></svg>
+              <span id="shellLabel">SHELL</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="nx-transwrap">
+          <div class="nx-transcript" id="transcriptBox">
+            <div class="lbl">JONLI TRANSKRIPT</div>
+            <div class="txt placeholder" id="transcript">Gapiring yoki pastdagi maydonga buyruq yozing — yoki “Hey Nexus” deb ayting.<span class="nx-caret" id="caret">▋</span></div>
+            <div class="nx-intentrow" id="intentRow" hidden>
+              <span class="k" id="intentKey">Aniqlangan niyat</span>
+              <span class="v" id="liveIntent"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="nx-suggest" id="suggestions"></div>
+      </div>
+
+      <!-- O'ng: resurslar -->
+      <div class="nx-col-right">
+        <span class="t">Qurilma resurslari</span>
+        <div class="nx-rgrid">
+          <div class="nx-meters" id="sideMeters"></div>
+
+          <div class="nx-block">
+            <span class="hd">MODEL VA ULANISH</span>
+            <div class="nx-card">
+              <div class="col">
+                <span class="n" id="cardGeminiName">Gemini Live</span>
+                <span class="s" id="cardGeminiSub">ulanish kutilmoqda</span>
+              </div>
+              <span class="dot grey" id="cardGeminiDot"></span>
+            </div>
+            <div class="nx-card">
+              <div class="col">
+                <span class="n" id="cardAudioName">Audio · PCM 16 kHz → 24 kHz</span>
+                <span class="s" id="cardAudioSub">mikrofon: — · playback: —</span>
+              </div>
+              <span class="dot violet" id="cardAudioDot"></span>
+            </div>
+          </div>
+
+          <div class="nx-block">
+            <span class="hd">TEZKOR CHAQIRUVLAR</span>
+            <div class="nx-triggers" id="triggers"></div>
+          </div>
+
+          <div class="nx-devwrap">
+            <button type="button" class="nx-devbtn" id="deviceBtn">
+              <span class="l">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8b939c" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 00-3 3v7a3 3 0 006 0V5a3 3 0 00-3-3z"></path><path d="M19 10v2a7 7 0 01-14 0v-2"></path><path d="M12 19v3"></path></svg>
+                <span class="n" id="deviceName">Qurilma tanlanmagan</span>
+              </span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#949ba3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 9l4-4 4 4"></path><path d="M16 15l-4 4-4-4"></path></svg>
+            </button>
+            <div class="nx-devlist" id="deviceList" hidden></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ TAB: Buyruqlar tarixi ══════════════════════════ -->
+    <section class="nx-page" id="tab-history" hidden>
+      <div class="nx-pagehead">
+        <span class="t">Buyruqlar tarixi</span>
+        <span class="c">sessiya · <span id="histCount">0</span> ta yozuv</span>
+      </div>
+      <input type="search" class="nx-search" id="histSearch" placeholder="Qidirish… (matn, javob, tool nomi)" autocomplete="off">
+      <div class="nx-table" id="histTable">
+        <div class="th">OVOZLI BUYRUQ</div>
+        <div class="th">JAVOB / SHELL</div>
+        <div class="th">HOLAT</div>
+        <div class="th r">VAQT</div>
+      </div>
+    </section>
+
+    <!-- ══ TAB: Tizim ko'rsatkichlari ═════════════════════ -->
+    <section class="nx-page metrics" id="tab-metrics" hidden>
+      <span class="t">Tizim ko'rsatkichlari</span>
+      <div class="nx-mgrid" id="bigMeters"></div>
+      <div class="nx-mgrid" id="stats"></div>
+    </section>
+
+    <!-- ── Pastki qator: faqat markazdagi matn buyrug'i (kill_all — ⌥⎋, sozlamalar, menyu bar) ── -->
+    <footer class="nx-bottom">
+      <input type="text" class="nx-textin" id="textInput" placeholder="Buyruq yozing va Enter bosing…" autocomplete="off" aria-label="Buyruq">
+    </footer>
+  </div>
+</div>
+
+<div class="nx-toasts" id="toasts"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>

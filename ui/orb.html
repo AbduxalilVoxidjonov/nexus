@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<title>Nexus orb</title>
+<style>
+  /* Orb sahifasi shaffof NSPanel ichida ko'rsatiladi — fon yo'q, faqat shar va yorliq. */
+  html, body { margin:0; padding:0; background:transparent; overflow:hidden;
+               width:100%; height:100%; -webkit-user-select:none; user-select:none; cursor:default; }
+  body { font-family:-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+         display:flex; flex-direction:column; align-items:center; justify-content:flex-start; }
+  canvas { display:block; width:120px; height:120px; }
+  #label {
+    margin-top:-6px; padding:2px 9px; border-radius:999px; font-size:10.5px; font-weight:600;
+    letter-spacing:.02em; color:#e6e9ee; background:rgba(12,14,18,.82);
+    border:1px solid rgba(255,255,255,.10); box-shadow:0 4px 14px rgba(0,0,0,.45);
+    white-space:nowrap; transition:opacity .25s, background .25s;
+  }
+  #label.hidden { opacity:0; }
+</style>
+</head>
+<body>
+<canvas id="orb" width="240" height="240"></canvas>
+<div id="label">ulanmoqda…</div>
+<script>
+(() => {
+  "use strict";
+  // Holat → rang / yorliq (nexus/desktop.py bilan bir xil bo'lishi kerak)
+  const COLORS = {
+    idle: "#6b7280", listening: "#22c55e", processing: "#f59e0b", tool_executing: "#34d399",
+    speaking: "#06b6d4", dictating: "#a855f7", awaiting_confirmation: "#f59e0b",
+    disconnected: "#ef4444", connecting: "#6b7280",
+  };
+  const LABELS = {
+    idle: "kutmoqda", listening: "tinglayapti", processing: "o'ylayapti", tool_executing: "bajaryapti",
+    speaking: "gapiryapti", dictating: "yozib turibman", awaiting_confirmation: "tasdiq kutilmoqda",
+    disconnected: "ulanmagan", connecting: "ulanmoqda…",
+  };
+  const SPEED = { idle: .05, listening: .05, processing: .18, tool_executing: .14, speaking: .12,
+                  dictating: .09, awaiting_confirmation: .22, disconnected: .04, connecting: .06 };
+
+  const S = { state: "idle", gemini: "disconnected", wsOpen: false, muted: false, level: 0,
+              levelAt: 0, phase: 0, ws: null, retry: 0, confirm: null };
+
+  const cv = document.getElementById("orb");
+  const ctx = cv.getContext("2d");
+  const label = document.getElementById("label");
+  const DPR = 2, D = 120;
+
+  function effective() {
+    if (!S.wsOpen) return "disconnected";
+    if (S.gemini !== "connected") return "connecting";
+    if (S.confirm) return "awaiting_confirmation";
+    return S.state in COLORS ? S.state : "idle";
+  }
+  function hex(c, a) {
+    const n = parseInt(c.slice(1), 16);
+    return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+  }
+  function amplitude(st, breathe) {
+    // 0..1 — shar hozir qanchalik "shishgan". Mikrofon/ovoz darajasi ustunlik qiladi.
+    const fresh = performance.now() - S.levelAt < 400 ? S.level : 0;
+    if (st === "listening" || st === "dictating") return Math.max(breathe * .35, Math.min(1, fresh * 4));
+    if (st === "speaking") return Math.max(breathe * .25, Math.min(1, fresh * 4));
+    if (st === "processing" || st === "tool_executing" || st === "awaiting_confirmation") return breathe;
+    return breathe * .4;
+  }
+
+  function draw() {
+    const st = effective();
+    S.phase = (S.phase + (SPEED[st] || .05)) % (Math.PI * 2);
+    const breathe = (Math.sin(S.phase) + 1) / 2;
+    const amp = amplitude(st, breathe);
+    const col = COLORS[st];
+    const c = D / 2, base = D * .26;
+    const radius = base * (1 + .18 * amp);
+    const glow = radius + D * .20 * (.4 + .6 * amp);
+
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.clearRect(0, 0, D, D);
+
+    // tashqi nur
+    let g = ctx.createRadialGradient(c, c, 0, c, c, glow);
+    g.addColorStop(0, hex(col, .43)); g.addColorStop(.55, hex(col, .18)); g.addColorStop(1, hex(col, 0));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(c, c, glow, 0, Math.PI * 2); ctx.fill();
+
+    // asosiy shar
+    g = ctx.createRadialGradient(c - radius * .3, c - radius * .3, 0, c, c, radius * 1.8);
+    g.addColorStop(0, "rgba(255,255,255,.55)"); g.addColorStop(.25, col); g.addColorStop(1, hex(col, .75));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(c, c, radius, 0, Math.PI * 2); ctx.fill();
+
+    // o'ylash/bajarish — aylanuvchi yoy ("band" ekanini bildiradi)
+    if (st === "processing" || st === "tool_executing" || st === "connecting") {
+      ctx.strokeStyle = "rgba(255,255,255,.8)"; ctx.lineWidth = 3; ctx.lineCap = "round";
+      const a0 = S.phase * 2;
+      ctx.beginPath(); ctx.arc(c, c, radius + 9, a0, a0 + 1.75); ctx.stroke();
+    }
+    // tasdiq kutilmoqda — pulsatsiya halqasi
+    if (st === "awaiting_confirmation") {
+      ctx.strokeStyle = hex(col, .35 + .55 * breathe); ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(c, c, radius + 8 + 6 * breathe, 0, Math.PI * 2); ctx.stroke();
+    }
+    // mikrofon o'chirilgan — chiziq
+    if (S.muted && S.wsOpen) {
+      ctx.strokeStyle = "rgba(255,255,255,.86)"; ctx.lineWidth = 4; ctx.lineCap = "round";
+      const r = radius * .8;
+      ctx.beginPath(); ctx.moveTo(c - r, c + r); ctx.lineTo(c + r, c - r); ctx.stroke();
+    }
+
+    // Mute — chiziq allaqachon ko'rsatadi; yorliq qisqa qolsin (128px oynaga sig'sin)
+    const txt = S.muted && S.wsOpen && st !== "disconnected" ? "mikrofon o'chiq" : (LABELS[st] || st);
+    if (label.textContent !== txt) label.textContent = txt;
+    requestAnimationFrame(draw);
+  }
+
+  // ── WebSocket ────────────────────────────────────────────────
+  function connect() {
+    let ws;
+    try { ws = new WebSocket("ws://" + location.host + "/ws"); } catch (e) { return retry(); }
+    S.ws = ws;
+    ws.onopen = () => { S.wsOpen = true; S.retry = 0; };
+    ws.onclose = () => { S.wsOpen = false; S.ws = null; retry(); };
+    ws.onerror = () => { try { ws.close(); } catch (e) {} };
+    ws.onmessage = (m) => { let ev; try { ev = JSON.parse(m.data); } catch (e) { return; } handle(ev); };
+  }
+  function retry() { const d = Math.min(8000, 500 * Math.pow(2, S.retry++)); setTimeout(connect, d); }
+  function applySnapshot(snap) {
+    if (!snap) return;
+    if (snap.CONNECTION && snap.CONNECTION.gemini) S.gemini = snap.CONNECTION.gemini;
+    if (snap.SETTINGS && "muted" in snap.SETTINGS) S.muted = !!snap.SETTINGS.muted;
+  }
+  function handle(ev) {
+    const d = ev.data || {};
+    switch (ev.type) {
+      case "HELLO":
+        if (d.state) S.state = d.state;
+        applySnapshot(d.snapshot);
+        S.confirm = d.pending_confirm || null;
+        break;
+      case "STATE_CHANGE": S.state = d.state || S.state; break;
+      case "CONNECTION": if (d.gemini) S.gemini = d.gemini; break;
+      case "SETTINGS": if ("muted" in d) S.muted = !!d.muted; break;
+      case "AUDIO_LEVEL": S.level = Number(d.rms) || 0; S.levelAt = performance.now(); break;
+      case "CONFIRM_REQUEST": S.confirm = d; break;
+      case "CONFIRM_RESOLVED": if (!S.confirm || S.confirm.token === d.token) S.confirm = null; break;
+    }
+  }
+
+  // Native qatlam (desktop.py) uchun: orb ustidagi bosishlar Python'da qayta ishlanadi,
+  // lekin xohlasa evaluateJavaScript orqali shu funksiyani chaqirishi mumkin.
+  window.nexusOrb = {
+    send(cmd, extra) {
+      if (!S.ws || S.ws.readyState !== WebSocket.OPEN) return false;
+      S.ws.send(JSON.stringify(Object.assign({ cmd }, extra || {})));
+      return true;
+    },
+    state: () => effective(),
+  };
+
+  connect();
+  requestAnimationFrame(draw);
+})();
+</script>
+</body>
+</html>

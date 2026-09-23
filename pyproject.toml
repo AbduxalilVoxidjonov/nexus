@@ -1,0 +1,45 @@
+[project]
+name = "nexus-voice"
+version = "0.1.0"
+description = "Nexus Ovoz OS — Gemini Live API asosidagi macOS ovozli yordamchi daemon"
+requires-python = ">=3.11"
+dependencies = [
+    "google-genai>=1.30",
+    "sounddevice>=0.5",
+    "numpy>=1.26",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "websockets>=13",
+    "python-dotenv>=1.0",
+    "psutil>=6.0",
+    "openpyxl>=3.1",
+    "pyobjc-framework-Cocoa>=10.3",
+    "pyobjc-framework-Quartz>=10.3",
+    "pyobjc-framework-ApplicationServices>=10.3",
+    "pyobjc-framework-WebKit>=10.3",
+    "pyobjc-framework-Vision>=10.3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-asyncio>=0.24", "ruff>=0.6", "pyinstaller>=6.10"]
+
+[project.gui-scripts]
+nexus-desktop = "nexus.main:cli"
+
+[project.scripts]
+nexus = "nexus.main:cli"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["nexus"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"

@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  html, body { margin:0; padding:0; background:#07080a; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  a { color:#7dd3fc; text-decoration:none; }
+  a:hover { color:#bae6fd; }
+  ::-webkit-scrollbar { width:8px; height:8px; }
+  ::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.12); border-radius:8px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  @keyframes nx-wave { 0%,100% { transform: scaleY(0.14); } 50% { transform: scaleY(1); } }
+  @keyframes nx-breathe { 0%,100% { opacity:.30; transform:scale(1); } 50% { opacity:.62; transform:scale(1.05); } }
+  @keyframes nx-spin { to { transform: rotate(360deg); } }
+  @keyframes nx-pulse { 0%,100% { opacity:1; } 50% { opacity:.3; } }
+  @keyframes nx-shimmer { 0% { background-position: -180% 0; } 100% { background-position: 180% 0; } }
+  @keyframes nx-caret { 0%,49% { opacity:1; } 50%,100% { opacity:0; } }
+  @keyframes nx-rise { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform:none; } }
+</style>
+</helmet>
+
+<div style="min-height:100vh; padding:34px 28px 44px; background:radial-gradient(1100px 620px at 18% -8%, #12212b 0%, rgba(7,8,10,0) 62%), radial-gradient(900px 560px at 92% 8%, #1a1430 0%, rgba(7,8,10,0) 58%), #07080a; display:flex; justify-content:center; box-sizing:border-box;">
+
+  <div style="width:100%; max-width:1320px; border-radius:18px; overflow:hidden; background:rgba(16,18,22,0.82); backdrop-filter:blur(40px); -webkit-backdrop-filter:blur(40px); border:1px solid rgba(255,255,255,0.09); box-shadow:0 44px 120px -30px rgba(0,0,0,0.85), 0 0 0 1px rgba(0,0,0,0.6);">
+
+    <!-- ── Sarlavha paneli ────────────────────────────────── -->
+    <div style="display:flex; align-items:center; gap:16px; padding:12px 18px 10px; background:linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.012)); flex-wrap:wrap;">
+
+      <div style="display:flex; align-items:center; gap:8px; flex:0 0 auto;">
+        <div style="width:12px; height:12px; border-radius:50%; background:#ff5f57; border:1px solid rgba(0,0,0,0.25);"></div>
+        <div style="width:12px; height:12px; border-radius:50%; background:#febc2e; border:1px solid rgba(0,0,0,0.25);"></div>
+        <div style="width:12px; height:12px; border-radius:50%; background:#28c840; border:1px solid rgba(0,0,0,0.25);"></div>
+      </div>
+
+      <div style="display:flex; align-items:baseline; gap:9px; flex:0 0 auto; min-width:0;">
+        <span style="font-size:13px; font-weight:650; letter-spacing:0.02em; color:#eceef1;">NEXUS OVOZ OS</span>
+        <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#949ba3; letter-spacing:0.01em;">// mahalliy host</span>
+      </div>
+
+      <div style="flex:1 1 auto; min-width:8px;"></div>
+
+      <div style="display:flex; align-items:center; gap:10px; flex:0 1 auto; flex-wrap:wrap;">
+        <div style="display:flex; align-items:center; gap:7px; padding:4px 10px 4px 8px; border-radius:99px; background:rgba(52,211,153,0.10); border:1px solid rgba(52,211,153,0.22);">
+          <span style="width:6px; height:6px; border-radius:50%; background:#34d399; animation:nx-pulse 2.4s ease-in-out infinite;"></span>
+          <span style="font-size:11px; color:#9fe7c8; letter-spacing:0.01em;">Whisper.cpp · Faol</span>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#7c848d; padding:4px 9px; border-radius:7px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.07);">{{ latency }}</div>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#a8afb7; letter-spacing:0.02em; min-width:58px; text-align:right;">{{ clock }}</div>
+        <button type="button" onClick="{{ toggleSettings }}" style="display:flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:7px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.07); color:#9aa1a9; cursor:pointer; padding:0;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 008.6 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 8.6a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"></path></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Asboblar qatori: tablar ────────────────────────── -->
+    <div style="display:flex; justify-content:center; padding:0 18px 11px; border-bottom:1px solid rgba(255,255,255,0.07); background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.012));">
+      <div style="display:flex; gap:2px; padding:2px; border-radius:9px; background:rgba(255,255,255,0.055); border:1px solid rgba(255,255,255,0.07); flex-wrap:wrap; justify-content:center;">
+        <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3">
+          <button type="button" onClick="{{ t.select }}" style="{{ t.style }}">{{ t.label }}</button>
+        </sc-for>
+      </div>
+    </div>
+
+    <!-- ══ TAB: Ovoz oqimi ════════════════════════════════ -->
+    <sc-if value="{{ isStream }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex; flex-wrap:wrap; align-items:stretch; gap:1px; background:rgba(255,255,255,0.07);">
+
+      <!-- Chap: jonli jurnal -->
+      <div style="flex:1 1 280px; min-width:0; background:rgba(13,15,18,0.55); padding:16px 16px 18px; min-height:560px; display:flex; flex-direction:column; gap:12px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+          <span style="font-size:12px; font-weight:600; color:#d6dade; letter-spacing:0.01em;">Jonli buyruqlar jurnali</span>
+          <span style="font-family:'JetBrains Mono',monospace; font-size:10px; color:#949ba3;">{{ logCount }} yozuv</span>
+        </div>
+
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <sc-for list="{{ filters }}" as="f" hint-placeholder-count="4">
+            <button type="button" onClick="{{ f.select }}" style="{{ f.style }}">{{ f.label }}</button>
+          </sc-for>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:8px; overflow-y:auto; overflow-x:hidden; max-height:470px; padding-right:2px; min-width:0;">
+          <sc-for list="{{ visibleLog }}" as="e" hint-placeholder-count="5">
+            <div style="{{ e.wrapStyle }}">
+              <div style="display:flex; align-items:flex-start; gap:10px;">
+                <div style="{{ e.badgeStyle }}">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{ e.icon }}"></path></svg>
+                </div>
+                <div style="flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:6px;">
+                  <div style="display:flex; align-items:baseline; justify-content:space-between; gap:8px;">
+                    <span style="font-size:12px; color:#d9dde1; line-height:1.4;">{{ e.speech }}</span>
+                    <span style="font-family:'JetBrains Mono',monospace; font-size:10px; color:#8a929b; flex:0 0 auto;">{{ e.time }}</span>
+                  </div>
+                  <div style="font-size:10.5px; color:#8f979f; letter-spacing:0.01em;">{{ e.intent }}</div>
+                  <div style="display:flex; align-items:center; gap:7px; flex-wrap:wrap;">
+                    <code style="font-family:'JetBrains Mono',monospace; font-size:10.5px; color:#a5b4c4; background:rgba(255,255,255,0.055); border:1px solid rgba(255,255,255,0.07); border-radius:6px; padding:3px 7px; overflow-wrap:anywhere;">{{ e.shell }}</code>
+                    <span style="{{ e.statusStyle }}">{{ e.status }}</span>
+                    <span style="font-family:'JetBrains Mono',monospace; font-size:10px; color:#8a929b;">{{ e.latency }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <!-- Markaz: vizualizator -->
+      <div style="flex:1.45 1 330px; min-width:0; background:rgba(10,12,15,0.5); padding:26px 24px 20px; display:flex; flex-direction:column; align-items:center; justify-content:space-between; gap:18px; position:relative; overflow:hidden;">
+
+        <div style="display:flex; align-items:center; gap:8px; padding:5px 12px; border-radius:99px; background:rgba(255,255,255,0.045); border:1px solid rgba(255,255,255,0.08); z-index:2;">
+          <span style="{{ stateDotStyle }}"></span>
+          <span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:0.16em; color:#c3cad2;">{{ stateLabel }}</span>
+        </div>
+
+        <div style="position:relative; width:100%; display:flex; align-items:center; justify-content:center; flex:1 1 auto; min-height:230px; z-index:2;">
+          <div style="{{ auraStyle }}"></div>
+          <div style="{{ orbStyle }}">
+            <sc-if value="{{ isProcessing }}" hint-placeholder-val="{{ false }}">
+              <div style="width:46px; height:46px; border-radius:50%; border:2px solid rgba(255,255,255,0.10); border-top-color:#a78bfa; border-right-color:#22d3ee; animation:nx-spin 0.9s linear infinite;"></div>
+            </sc-if>
+            <div style="{{ barsWrapStyle }}">
+              <span style="display:block; width:4px; height:12px; border-radius:99px; transform-origin:center; background:linear-gradient(180deg,#a78bfa,#818cf8); animation:nx-wave .70s ease-in-out infinite; animation-delay:0s;"></span>
+              <span style="display:block; width:4px; height:18px; border-radius:99px; transform-origin:center; background:linear-gradient(180deg,#b18cfa,#8b8cf9); animation:nx-wave .86s ease-in-out infinite; animation-delay:.05s;"></span>
+              <span style="display:block; width:4px; height:26px; border-radius:99px; transform-origin:center; background:linear-gradient(180deg,#bb8dfa,#958cf9); animation:nx-wave .74s ease-in-out infinite; animation-delay:.10s;"></span>
+              <span style="display:block; width:4px; height:34px; border-radius:99px; transform-origin:center; background:linear-gradient(180deg,#c58ef9,#9f8dfa); animation:nx-wave .92s ease-in-out infinite; animation-delay:.15s;"></span>
+              <span style="display:block; width:4px; height:44px; border-radius:99px; transform-origin:center; background:linear-gradient(180deg,#d08ff7,#a98efa); animation:nx-wave .78s ease-in-out infinite; animation-delay:.20s;"></span>
+              <span style="display:block; width:4px; height:54px; border-radius:99px; transform-origin:center; background:linear-gradient(180deg,#dc90f5,#b38ffb); animation:nx-wave .96s ease-in-out infinite; animation-delay:.25s;"></span>
+              <span style="display:block; width:4px; height:62px; border-radius:99px; transform-origin:center; background:linear-gradient(180deg,#e879f9,#bd90fb); animation:nx-wave .72s ease-in-out infinite; animation-delay:.30s;"></span>
+              <span style="display:block; width:4px; height:70px; border-radius:99px; transform-origin:center; background:linear-gradient(180deg,#d07af7,#9a9dfb); animation:nx-wave .88s ease-in-out infinite; animation-delay:.35s;"></span>
+              <span style="display:block; width:4px; height:76px; border-radius:99px; transform-origin:center; background:linear-gradient(180deg,#a78bfa,#5cb0fa); animation:nx-wave .76s ease-in-out infinite; animation-delay:.40s;"></span>
+              <span style="display:block; width:4px; height:80px; border-radius:99px; transform-origin:center; background:linear-gradient(180deg,#7aa8fb,#3ec0f8); animation:nx-wave .94s ease-in-out infinite; animation-delay:.45s;"></span>
+              <span style="display:block; width:4px; height:84px; border-radius:99px; transform-origin:center; background:linear-gradient(180deg,#38bdf8,#22d3ee); animation:nx-wave .68s ease-in-out infinite; animation-delay:.50s;"></span>
+              <span style="display:block; width:4px; height:80px; border-radius:99px; transform-origin:center; background:linear-gradient(180deg,#4ab6f8,#2fcbef); animation:nx-wave .90s ease-in-out infinite; animation-delay:.55s;"></span>
+              <span style="display:block; width:4px; height:76px; border-radius:99px; transform-origin:center; background:linear-gradient(180deg,#6aa9fa,#41bdf5); animation:nx-wave .74s ease-in-out infinite; animation-delay:.60s;"></span>
+              <span style="display:block; width:4px; height:70px; border-radius:99px; transform-origin:center; background:linear-gradient(180deg,#8f9cfb,#5eb0f9); animation:nx-wave .98s ease-in-out infinite; animation-delay:.65s;"></span>
+              <span style="display:block; width:4px; height:62px; border-radius:99px; transform-origin:center; background:linear-gradient(180deg,#b18cfa,#7ba4fb); animation:nx-wave .70s ease-in-out infinite; animation-delay:.70s;"></span>
+              <span style="display:block; width:4px; height:54px; border-radius:99px; transform-origin:center; background:linear-gradient(180deg,#c58ef9,#8f9cfb); animation:nx-wave .86s ease-in-out infinite; animation-delay:.75s;"></span>
+              <span style="display:block; width:4px; height:44px; border-radius:99px; transform-origin:center; background:linear-gradient(180deg,#d48ff6,#a294fb); animation:nx-wave .78s ease-in-out infinite; animation-delay:.80s;"></span>
+              <span style="display:block; width:4px; height:34px; border-radius:99px; transform-origin:center; background:linear-gradient(180deg,#c08df9,#9590fa); animation:nx-wave .92s ease-in-out infinite; animation-delay:.85s;"></span>
+              <span style="display:block; width:4px; height:26px; border-radius:99px; transform-origin:center; background:linear-gradient(180deg,#ab8bfa,#8a8df9); animation:nx-wave .72s ease-in-out infinite; animation-delay:.90s;"></span>
+              <span style="display:block; width:4px; height:18px; border-radius:99px; transform-origin:center; background:linear-gradient(180deg,#9d8cfb,#818cf8); animation:nx-wave .88s ease-in-out infinite; animation-delay:.95s;"></span>
+              <span style="display:block; width:4px; height:12px; border-radius:99px; transform-origin:center; background:linear-gradient(180deg,#8f8dfc,#7c8bf7); animation:nx-wave .80s ease-in-out infinite; animation-delay:1s;"></span>
+            </div>
+            <sc-if value="{{ isExecuting }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex; flex-direction:column; align-items:center; gap:9px;">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l6-6-6-6"></path><path d="M12 19h8"></path></svg>
+                <span style="font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.12em; color:#6ee7b7;">SHELL</span>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+
+        <div style="width:100%; max-width:430px; min-height:92px; z-index:2;">
+          <div style="{{ transcriptStyle }}">
+            <div style="font-size:10px; letter-spacing:0.14em; color:#949ba3; margin-bottom:7px;">JONLI TRANSKRIPT</div>
+            <div style="font-size:14.5px; line-height:1.5; color:#e4e8ec; text-wrap:pretty;">{{ transcript }}<span style="{{ caretStyle }}">▋</span></div>
+            <sc-if value="{{ hasIntent }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:10px; padding-top:9px; border-top:1px solid rgba(255,255,255,0.07); display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <span style="font-size:10.5px; color:#8b939c;">Aniqlangan niyat</span>
+                <span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; color:#c4b5fd; background:rgba(167,139,250,0.12); border:1px solid rgba(167,139,250,0.22); border-radius:6px; padding:2px 7px;">{{ liveIntent }}</span>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:7px; flex-wrap:wrap; justify-content:center; z-index:2;">
+          <sc-for list="{{ suggestions }}" as="s" hint-placeholder-count="3">
+            <button type="button" onClick="{{ s.run }}" style="font-size:11px; color:#99a1aa; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); border-radius:99px; padding:5px 11px; cursor:pointer; font-family:inherit;" style-hover="background:rgba(255,255,255,0.08); color:#e2e6ea;">{{ s.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+
+      <!-- O'ng: resurslar -->
+      <div style="flex:1 1 270px; min-width:0; background:rgba(13,15,18,0.55); padding:16px; display:flex; flex-direction:column; gap:14px;">
+        <span style="font-size:12px; font-weight:600; color:#d6dade;">Qurilma resurslari</span>
+
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); gap:16px 22px; align-content:start; align-items:start;">
+
+        <div style="display:flex; flex-direction:column; gap:12px; min-width:0;">
+          <sc-for list="{{ meters }}" as="m" hint-placeholder-count="3">
+            <div style="display:flex; flex-direction:column; gap:7px;">
+              <div style="display:flex; align-items:baseline; justify-content:space-between; gap:8px;">
+                <span style="font-size:11.5px; color:#aeb5bd;">{{ m.label }}</span>
+                <span style="font-family:'JetBrains Mono',monospace; font-size:11.5px; color:#e4e8ec;">{{ m.value }}</span>
+              </div>
+              <div style="height:5px; border-radius:99px; background:rgba(255,255,255,0.07); overflow:hidden;">
+                <div style="{{ m.barStyle }}"></div>
+              </div>
+              <span style="font-family:'JetBrains Mono',monospace; font-size:10px; color:#8a929b;">{{ m.sub }}</span>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:9px; min-width:0;">
+          <span style="font-size:11px; letter-spacing:0.1em; color:#949ba3;">MAHALLIY MODELLAR</span>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding:9px 10px; border-radius:9px; background:rgba(255,255,255,0.035); border:1px solid rgba(255,255,255,0.07);">
+            <div style="display:flex; flex-direction:column; gap:2px; min-width:0;">
+              <span style="font-size:11.5px; color:#dfe3e7;">Whisper.cpp · small.uz</span>
+              <span style="font-family:'JetBrains Mono',monospace; font-size:10px; color:#8a929b;">482 MB · 0.31× real vaqt</span>
+            </div>
+            <span style="width:6px; height:6px; border-radius:50%; background:#34d399; flex:0 0 auto;"></span>
+          </div>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding:9px 10px; border-radius:9px; background:rgba(255,255,255,0.035); border:1px solid rgba(255,255,255,0.07);">
+            <div style="display:flex; flex-direction:column; gap:2px; min-width:0;">
+              <span style="font-size:11.5px; color:#dfe3e7;">Agent LLM · Qwen 7B Q4</span>
+              <span style="font-family:'JetBrains Mono',monospace; font-size:10px; color:#8a929b;">4.1 GB · 38 tok/s</span>
+            </div>
+            <span style="width:6px; height:6px; border-radius:50%; background:#a78bfa; flex:0 0 auto;"></span>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:8px; min-width:0;">
+          <span style="font-size:11px; letter-spacing:0.1em; color:#949ba3;">TEZKOR CHAQIRUVLAR</span>
+          <sc-for list="{{ triggers }}" as="tr" hint-placeholder-count="3">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+              <span style="font-size:11.5px; color:#b6bdc4;">{{ tr.label }}</span>
+              <code style="font-family:'JetBrains Mono',monospace; font-size:10px; color:#9aa1a9; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.07); border-radius:5px; padding:2px 6px;">{{ tr.key }}</code>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="position:relative; min-width:0; align-self:end; grid-column:1 / -1;">
+          <button type="button" onClick="{{ toggleDevices }}" style="width:100%; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:9px 11px; border-radius:9px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.09); cursor:pointer; font-family:inherit;">
+            <span style="display:flex; align-items:center; gap:8px; min-width:0;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8b939c" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 00-3 3v7a3 3 0 006 0V5a3 3 0 00-3-3z"></path><path d="M19 10v2a7 7 0 01-14 0v-2"></path><path d="M12 19v3"></path></svg>
+              <span style="font-size:11.5px; color:#dfe3e7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ device }}</span>
+            </span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#949ba3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 9l4-4 4 4"></path><path d="M16 15l-4 4-4-4"></path></svg>
+          </button>
+          <sc-if value="{{ devicesOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute; bottom:calc(100% + 6px); left:0; right:0; padding:5px; border-radius:11px; background:rgba(30,33,38,0.95); backdrop-filter:blur(30px); border:1px solid rgba(255,255,255,0.11); box-shadow:0 20px 50px -14px rgba(0,0,0,0.8); z-index:20; animation:nx-rise .14s ease-out;">
+              <sc-for list="{{ deviceList }}" as="d" hint-placeholder-count="3">
+                <button type="button" onClick="{{ d.select }}" style="{{ d.style }}">
+                  <span>{{ d.label }}</span>
+                  <span style="{{ d.checkStyle }}">✓</span>
+                </button>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+
+        </div>
+      </div>
+    </div>
+    </sc-if>
+
+    <!-- ══ TAB: Buyruqlar tarixi ══════════════════════════ -->
+    <sc-if value="{{ isHistory }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:20px 22px 26px; min-height:560px; display:flex; flex-direction:column; gap:14px;">
+      <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+        <span style="font-size:13px; font-weight:600; color:#e2e6ea;">Buyruqlar tarixi</span>
+        <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#949ba3;">bugun · {{ logCount }} ta bajarilgan buyruq</span>
+      </div>
+      <div style="display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1.3fr) 110px 90px; gap:1px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.07); border-radius:11px; overflow:hidden;">
+        <div style="padding:9px 12px; background:rgba(255,255,255,0.04); font-size:10.5px; letter-spacing:0.08em; color:#9aa1a9;">OVOZLI BUYRUQ</div>
+        <div style="padding:9px 12px; background:rgba(255,255,255,0.04); font-size:10.5px; letter-spacing:0.08em; color:#9aa1a9;">SHELL</div>
+        <div style="padding:9px 12px; background:rgba(255,255,255,0.04); font-size:10.5px; letter-spacing:0.08em; color:#9aa1a9;">HOLAT</div>
+        <div style="padding:9px 12px; background:rgba(255,255,255,0.04); font-size:10.5px; letter-spacing:0.08em; color:#9aa1a9; text-align:right;">VAQT</div>
+        <sc-for list="{{ log }}" as="e" hint-placeholder-count="6">
+          <div style="padding:11px 12px; background:rgba(13,15,18,0.7); font-size:12px; color:#d5d9de; line-height:1.45;">{{ e.speech }}</div>
+          <div style="padding:11px 12px; background:rgba(13,15,18,0.7);"><code style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#a5b4c4; overflow-wrap:anywhere;">{{ e.shell }}</code></div>
+          <div style="padding:11px 12px; background:rgba(13,15,18,0.7);"><span style="{{ e.statusStyle }}">{{ e.status }}</span></div>
+          <div style="padding:11px 12px; background:rgba(13,15,18,0.7); font-family:'JetBrains Mono',monospace; font-size:11px; color:#949ba3; text-align:right;">{{ e.latency }}</div>
+        </sc-for>
+      </div>
+    </div>
+    </sc-if>
+
+    <!-- ══ TAB: Tizim ko'rsatkichlari ═════════════════════ -->
+    <sc-if value="{{ isMetrics }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:20px 22px 26px; min-height:560px; display:flex; flex-direction:column; gap:18px;">
+      <span style="font-size:13px; font-weight:600; color:#e2e6ea;">Tizim ko'rsatkichlari</span>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(230px,1fr)); gap:14px;">
+        <sc-for list="{{ meters }}" as="m" hint-placeholder-count="3">
+          <div style="padding:16px; border-radius:13px; background:rgba(255,255,255,0.035); border:1px solid rgba(255,255,255,0.08); display:flex; flex-direction:column; gap:12px;">
+            <span style="font-size:11.5px; color:#9aa2aa;">{{ m.label }}</span>
+            <span style="font-family:'JetBrains Mono',monospace; font-size:30px; font-weight:500; color:#eef1f4; letter-spacing:-0.02em;">{{ m.value }}</span>
+            <div style="height:6px; border-radius:99px; background:rgba(255,255,255,0.07); overflow:hidden;">
+              <div style="{{ m.barStyle }}"></div>
+            </div>
+            <span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; color:#8a929b;">{{ m.sub }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(230px,1fr)); gap:14px;">
+        <sc-for list="{{ stats }}" as="s" hint-placeholder-count="4">
+          <div style="padding:14px 16px; border-radius:13px; background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.07); display:flex; flex-direction:column; gap:6px;">
+            <span style="font-size:11px; color:#9aa1a9;">{{ s.label }}</span>
+            <span style="font-family:'JetBrains Mono',monospace; font-size:17px; color:#dfe3e7;">{{ s.value }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    </sc-if>
+
+    <!-- ── Pastki boshqaruv paneli ────────────────────────── -->
+    <div style="display:flex; align-items:center; gap:16px; padding:12px 18px; border-top:1px solid rgba(255,255,255,0.07); background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.045)); flex-wrap:wrap;">
+
+      <button type="button" onClick="{{ togglePTT }}" style="{{ pttStyle }}">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M3 12h2"></path><path d="M7 8v8"></path><path d="M11 5v14"></path><path d="M15 9v6"></path><path d="M19 11v2"></path></svg>
+        <span>{{ pttLabel }}</span>
+        <kbd style="font-family:'JetBrains Mono',monospace; font-size:10px; color:inherit; opacity:.65; background:rgba(0,0,0,0.22); border-radius:5px; padding:2px 6px;">⌥ Bo'shliq</kbd>
+      </button>
+
+      <button type="button" onClick="{{ toggleMute }}" style="{{ muteStyle }}">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{ muteIcon }}"></path></svg>
+        <span>{{ muteLabel }}</span>
+      </button>
+
+      <div style="display:flex; align-items:center; gap:9px; min-width:190px; flex:0 1 240px;">
+        <span style="font-size:11px; color:#9aa1a9; white-space:nowrap;">Sezgirlik</span>
+        <div onClick="{{ onSensClick }}" style="position:relative; flex:1 1 auto; height:22px; display:flex; align-items:center; cursor:pointer;">
+          <div style="width:100%; height:6px; border-radius:99px; background:rgba(255,255,255,0.10); overflow:hidden;">
+            <div style="{{ sensFillStyle }}"></div>
+          </div>
+          <div style="{{ sensKnobStyle }}"></div>
+        </div>
+        <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#a8afb7; width:30px; text-align:right;">{{ sensitivity }}</span>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:9px; flex:1 1 200px; min-width:160px;">
+        <span style="font-size:11px; color:#9aa1a9; white-space:nowrap;">Kirish darajasi</span>
+        <div style="flex:1 1 auto; display:flex; align-items:center; gap:2px; height:14px;">
+          <sc-for list="{{ levelBars }}" as="lb" hint-placeholder-count="24">
+            <span style="{{ lb.style }}"></span>
+          </sc-for>
+        </div>
+      </div>
+
+      <button type="button" onClick="{{ killAll }}" style="display:flex; align-items:center; gap:7px; padding:7px 12px; border-radius:9px; background:rgba(251,113,133,0.10); border:1px solid rgba(251,113,133,0.24); color:#fda4af; font-size:11.5px; font-family:inherit; cursor:pointer;" style-hover="background:rgba(251,113,133,0.18);">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M18 6L6 18"></path><path d="M6 6l12 12"></path></svg>
+        <span>Bekor qilish</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;defaultTab&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;stream&quot;,&quot;history&quot;,&quot;metrics&quot;],&quot;default&quot;:&quot;stream&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Xatti-harakat&quot;},&quot;tickMetrics&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Xatti-harakat&quot;}}">
+const SEQ = [
+  { speech: "Docker Desktop'ni ochib, ishlayotgan konteynerlarni ko'rsat", intent: "Tizim buyrug'i: Ilovani ishga tushirish [99.2%]", shell: "docker ps --format table", latency: "14ms", kind: "shell", icon: "M4 17l6-6-6-6M12 19h8" },
+  { speech: "Ovoz balandligini qirq foizga tushir", intent: "Tizim sozlamasi: Audio chiqish [98.7%]", shell: "osascript -e 'set volume output volume 40'", latency: "9ms", kind: "buyruq", icon: "M11 5L6 9H2v6h4l5 4V5zM15.5 8.5a5 5 0 010 7" },
+  { speech: "Yuklamalar papkasini Finder'da och", intent: "Fayl tizimi: Papkani ochish [99.6%]", shell: "open ~/Downloads", latency: "6ms", kind: "buyruq", icon: "M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" },
+  { speech: "Wi-Fi ni o'chirib yoqing", intent: "Tarmoq: Interfeysni qayta yuklash [97.1%]", shell: "networksetup -setairportpower en0 off", latency: "22ms", kind: "shell", icon: "M5 12.55a11 11 0 0114.08 0M1.42 9a16 16 0 0121.16 0M8.53 16.11a6 6 0 016.95 0M12 20h.01" },
+];
+
+const INITIAL = [
+  { id: 1, time: "14:02:31", speech: "Xotira band qilgan jarayonlarni ko'rsat", intent: "Tizim: Monitoring [98.4%]", shell: "top -o mem -l 1 | head -12", latency: "18ms", status: "bajarildi", kind: "shell", icon: "M4 17l6-6-6-6M12 19h8" },
+  { id: 2, time: "13:58:07", speech: "Ekran yorqinligini oshir", intent: "Tizim sozlamasi: Displey [99.1%]", shell: "brightness 0.85", latency: "7ms", status: "bajarildi", kind: "buyruq", icon: "M11 5L6 9H2v6h4l5 4V5zM15.5 8.5a5 5 0 010 7" },
+  { id: 3, time: "13:51:44", speech: "Prodakshn serverga ulan", intent: "Tarmoq: SSH sessiya [91.3%]", shell: "ssh deploy@prod-01", latency: "—", status: "xato", kind: "xato", icon: "M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" },
+  { id: 4, time: "13:44:12", speech: "Loyiha papkasini VS Code'da och", intent: "Fayl tizimi: Muharrir [99.8%]", shell: "code ~/dev/nexus", latency: "11ms", status: "bajarildi", kind: "buyruq", icon: "M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" },
+  { id: 5, time: "13:39:50", speech: "Homebrew paketlarini yangila", intent: "Paket menejeri: Yangilash [96.5%]", shell: "brew update && brew upgrade", latency: "1.2s", status: "bajarildi", kind: "shell", icon: "M4 17l6-6-6-6M12 19h8" },
+];
+
+const DEVICES = ["MacBook Pro mikrofoni", "AirPods Pro", "Scarlett Solo (USB)", "Tizim audio chiqishi"];
+const TRIGGERS = [
+  { label: "Hey Nexus", key: "wake" },
+  { label: "Ovozni o'chir", key: "⌥ M" },
+  { label: "Diagnostika", key: "⌥ D" },
+  { label: "Sessiyani tugat", key: "⌥ ⎋" },
+];
+
+class Component extends DCLogic {
+  state = {
+    tab: this.props.defaultTab || "stream",
+    mode: "idle",
+    transcript: "",
+    liveIntent: "",
+    filter: "Hammasi",
+    log: INITIAL,
+    device: DEVICES[0],
+    devicesOpen: false,
+    muted: false,
+    sensitivity: 68,
+    cpu: 24, ram: 61, gpu: 47,
+    level: 0,
+    clock: "—",
+    seq: 0,
+  };
+
+  componentDidMount() {
+    this.tick = setInterval(() => {
+      const d = new Date();
+      const p = (n) => String(n).padStart(2, "0");
+      this.setState({ clock: p(d.getHours()) + ":" + p(d.getMinutes()) + ":" + p(d.getSeconds()) });
+    }, 1000);
+
+    this.metricTick = setInterval(() => {
+      if (this.props.tickMetrics === false) return;
+      const j = (v, lo, hi, amp) => Math.max(lo, Math.min(hi, Math.round(v + (Math.random() - 0.5) * amp)));
+      const busy = this.state.mode !== "idle";
+      this.setState((s) => ({
+        cpu: j(s.cpu, busy ? 38 : 12, busy ? 84 : 42, busy ? 22 : 9),
+        ram: j(s.ram, 52, 78, 5),
+        gpu: j(s.gpu, 40, busy ? 72 : 56, 6),
+      }));
+    }, 1400);
+
+    this.levelTick = setInterval(() => {
+      const listening = this.state.mode === "listening" && !this.state.muted;
+      const target = listening ? 0.25 + Math.random() * 0.75 : Math.random() * 0.07;
+      this.setState({ level: target });
+    }, 130);
+  }
+
+  componentWillUnmount() {
+    [this.tick, this.metricTick, this.levelTick, this.typer].forEach(clearInterval);
+    [this.t1, this.t2, this.t3].forEach(clearTimeout);
+  }
+
+  stopAll() {
+    clearInterval(this.typer);
+    [this.t1, this.t2, this.t3].forEach(clearTimeout);
+  }
+
+  runCommand = (entry) => {
+    this.stopAll();
+    this.setState({ mode: "listening", transcript: "", liveIntent: "" });
+    let i = 0;
+    this.typer = setInterval(() => {
+      i += 1;
+      this.setState({ transcript: entry.speech.slice(0, i) });
+      if (i >= entry.speech.length) {
+        clearInterval(this.typer);
+        this.t1 = setTimeout(() => {
+          this.setState({ mode: "processing", liveIntent: entry.intent });
+          this.t2 = setTimeout(() => {
+            this.setState({ mode: "executing" });
+            this.t3 = setTimeout(() => {
+              const d = new Date();
+              const p = (n) => String(n).padStart(2, "0");
+              const row = Object.assign({}, entry, {
+                id: Date.now(),
+                time: p(d.getHours()) + ":" + p(d.getMinutes()) + ":" + p(d.getSeconds()),
+                status: "bajarildi",
+              });
+              this.setState((s) => ({ mode: "idle", log: [row].concat(s.log), transcript: "", liveIntent: "" }));
+            }, 760);
+          }, 950);
+        }, 420);
+      }
+    }, 26);
+  };
+
+  togglePTT = () => {
+    if (this.state.mode !== "idle") {
+      this.stopAll();
+      this.setState({ mode: "idle", transcript: "", liveIntent: "" });
+      return;
+    }
+    const entry = SEQ[this.state.seq % SEQ.length];
+    this.setState((s) => ({ seq: s.seq + 1 }));
+    this.runCommand(entry);
+  };
+
+  renderVals() {
+    const s = this.state;
+    const mode = s.mode;
+    const listening = mode === "listening";
+    const accentFor = { idle: "#7c848d", listening: "#22d3ee", processing: "#a78bfa", executing: "#34d399" };
+    const labelFor = { idle: "BO'SH", listening: "TINGLAMOQDA", processing: "QAYTA ISHLAMOQDA", executing: "BAJARILMOQDA" };
+    const accent = accentFor[mode];
+
+    const tabDefs = [["stream", "Ovoz oqimi"], ["history", "Buyruqlar tarixi"], ["metrics", "Tizim ko'rsatkichlari"]];
+    const tabs = tabDefs.map(([id, label]) => ({
+      label,
+      select: () => this.setState({ tab: id }),
+      style: {
+        fontFamily: "inherit", fontSize: "11.5px", padding: "5px 13px", borderRadius: "7px", cursor: "pointer",
+        border: "1px solid " + (s.tab === id ? "rgba(255,255,255,0.11)" : "transparent"),
+        background: s.tab === id ? "rgba(255,255,255,0.10)" : "transparent",
+        color: s.tab === id ? "#f0f2f5" : "#858d96",
+        boxShadow: s.tab === id ? "0 1px 2px rgba(0,0,0,0.35)" : "none",
+        transition: "background .16s ease, color .16s ease",
+        whiteSpace: "nowrap",
+      },
+    }));
+
+    const filters = ["Hammasi", "Buyruqlar", "Shell", "Xatolar"].map((f) => ({
+      label: f,
+      select: () => this.setState({ filter: f }),
+      style: {
+        fontFamily: "inherit", fontSize: "10.5px", padding: "4px 10px", borderRadius: "99px", cursor: "pointer",
+        border: "1px solid " + (s.filter === f ? "rgba(34,211,238,0.28)" : "rgba(255,255,255,0.07)"),
+        background: s.filter === f ? "rgba(34,211,238,0.12)" : "rgba(255,255,255,0.03)",
+        color: s.filter === f ? "#7dd3fc" : "#858d96",
+        transition: "all .16s ease",
+      },
+    }));
+
+    const statusStyle = (st) => ({
+      display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "10px", padding: "2px 7px", borderRadius: "5px",
+      background: st === "xato" ? "rgba(251,113,133,0.12)" : "rgba(52,211,153,0.11)",
+      border: "1px solid " + (st === "xato" ? "rgba(251,113,133,0.24)" : "rgba(52,211,153,0.22)"),
+      color: st === "xato" ? "#fda4af" : "#6ee7b7",
+      whiteSpace: "nowrap",
+    });
+
+    const decorate = (e) => Object.assign({}, e, {
+      statusStyle: statusStyle(e.status),
+      wrapStyle: {
+        padding: "11px 12px", borderRadius: "11px",
+        background: e.status === "xato" ? "rgba(251,113,133,0.04)" : "rgba(255,255,255,0.028)",
+        border: "1px solid " + (e.status === "xato" ? "rgba(251,113,133,0.16)" : "rgba(255,255,255,0.065)"),
+        animation: "nx-rise .22s ease-out",
+      },
+      badgeStyle: {
+        display: "flex", alignItems: "center", justifyContent: "center", width: "26px", height: "26px", borderRadius: "8px", flex: "0 0 auto",
+        background: e.status === "xato" ? "rgba(251,113,133,0.12)" : "rgba(255,255,255,0.06)",
+        border: "1px solid rgba(255,255,255,0.07)",
+        color: e.status === "xato" ? "#fda4af" : "#9fb0c0",
+      },
+    });
+
+    const log = s.log.map(decorate);
+    const fmap = { "Buyruqlar": "buyruq", "Shell": "shell", "Xatolar": "xato" };
+    const visibleLog = s.filter === "Hammasi" ? log : log.filter((e) => (s.filter === "Xatolar" ? e.status === "xato" : e.kind === fmap[s.filter]));
+
+    const barCount = 34;
+    const bars = Array.from({ length: barCount }, (_, i) => {
+      const mid = 1 - Math.abs(i - (barCount - 1) / 2) / ((barCount - 1) / 2);
+      const h = 10 + mid * 66;
+      const hue = 265 + mid * 60 - (i % 2) * 14;
+      return {
+        style: {
+          display: "block", width: "3px", borderRadius: "99px",
+          height: h + "px",
+          background: "linear-gradient(180deg, hsl(" + hue + " 92% 74%), hsl(" + (hue + 40) + " 88% 62%))",
+          transformOrigin: "center",
+          animation: "nx-wave " + (0.62 + (i % 5) * 0.11).toFixed(2) + "s ease-in-out infinite",
+          animationDelay: (i * 0.037).toFixed(3) + "s",
+          animationPlayState: listening ? "running" : "paused",
+          opacity: listening ? 0.95 : 0.22,
+          transform: listening ? "scaleY(1)" : "scaleY(0.12)",
+          transition: "opacity .3s ease",
+        },
+      };
+    });
+
+    const levelBars = Array.from({ length: 26 }, (_, i) => {
+      const on = i / 26 < s.level && !s.muted;
+      return {
+        style: {
+          display: "block", flex: "1 1 auto", height: on ? "12px" : "4px", borderRadius: "99px",
+          background: on ? (i > 21 ? "#fb7185" : i > 17 ? "#fbbf24" : "#22d3ee") : "rgba(255,255,255,0.09)",
+          transition: "height .1s ease, background .1s ease",
+        },
+      };
+    });
+
+    const meterBar = (v, c) => ({ width: v + "%", height: "100%", borderRadius: "99px", background: c, transition: "width .7s cubic-bezier(.4,0,.2,1)" });
+    const meters = [
+      { label: "Protsessor yuklamasi", value: s.cpu + "%", sub: "M3 Pro · 11 yadro · 48°C", barStyle: meterBar(s.cpu, "linear-gradient(90deg,#22d3ee,#38bdf8)") },
+      { label: "Birlashgan xotira", value: s.ram + "%", sub: Math.round(s.ram * 0.36) + " GB / 36 GB", barStyle: meterBar(s.ram, "linear-gradient(90deg,#a78bfa,#c084fc)") },
+      { label: "GPU harorati", value: (34 + Math.round(s.gpu * 0.42)) + "°C", sub: "14 yadro · " + s.gpu + "% yuklama", barStyle: meterBar(s.gpu, "linear-gradient(90deg,#34d399,#6ee7b7)") },
+    ];
+
+    const stats = [
+      { label: "O'rtacha kechikish", value: "18 ms" },
+      { label: "Bugungi buyruqlar", value: String(s.log.length) },
+      { label: "Tanib olish aniqligi", value: "97.8%" },
+      { label: "Ishlash vaqti", value: "4s 12d" },
+    ];
+
+    return {
+      clock: s.clock,
+      latency: "18ms mahalliy",
+      tabs, filters, log, visibleLog, meters, stats,
+      logCount: s.log.length,
+      isStream: s.tab === "stream", isHistory: s.tab === "history", isMetrics: s.tab === "metrics",
+      isProcessing: mode === "processing",
+      isExecuting: mode === "executing",
+      barsWrapStyle: {
+        display: mode === "idle" || listening ? "flex" : "none",
+        alignItems: "center", justifyContent: "center", gap: "4px", height: "84px", width: "164px",
+        opacity: listening ? 1 : 0.34,
+        transform: listening ? "scaleY(1)" : "scaleY(0.16)",
+        transition: "opacity .45s ease, transform .55s cubic-bezier(.4,0,.2,1)",
+      },
+      stateLabel: labelFor[mode],
+      stateDotStyle: { width: "6px", height: "6px", borderRadius: "50%", background: accent, boxShadow: "0 0 10px " + accent, animation: mode === "idle" ? "none" : "nx-pulse 1.4s ease-in-out infinite" },
+      auraStyle: {
+        position: "absolute", width: "300px", height: "300px", borderRadius: "50%", pointerEvents: "none",
+        background: listening
+          ? "radial-gradient(circle, rgba(167,139,250,0.34), rgba(34,211,238,0.16) 45%, rgba(0,0,0,0) 70%)"
+          : mode === "processing"
+          ? "radial-gradient(circle, rgba(167,139,250,0.26), rgba(0,0,0,0) 68%)"
+          : mode === "executing"
+          ? "radial-gradient(circle, rgba(52,211,153,0.24), rgba(0,0,0,0) 68%)"
+          : "radial-gradient(circle, rgba(255,255,255,0.05), rgba(0,0,0,0) 68%)",
+        filter: "blur(6px)",
+        animation: "nx-breathe " + (listening ? "2.2s" : "5s") + " ease-in-out infinite",
+      },
+      orbStyle: {
+        position: "relative", width: "226px", height: "226px", borderRadius: "50%",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: "radial-gradient(circle at 34% 26%, rgba(255,255,255,0.085), rgba(255,255,255,0.015) 58%, rgba(255,255,255,0) 72%)",
+        border: "1px solid " + (mode === "idle" ? "rgba(255,255,255,0.11)" : accent + "44"),
+        boxShadow: mode === "idle" ? "inset 0 1px 0 rgba(255,255,255,0.07)" : "inset 0 1px 0 rgba(255,255,255,0.09), 0 0 46px -14px " + accent,
+        backdropFilter: "blur(20px)",
+        transition: "border-color .45s ease, box-shadow .45s ease",
+      },
+      transcript: s.transcript || (mode === "idle" ? "Gapirish uchun pastdagi tugmani bosing yoki “Hey Nexus” deb ayting." : ""),
+      caretStyle: { marginLeft: "2px", color: accent, animation: "nx-caret 1s step-end infinite", opacity: listening ? 1 : 0 },
+      transcriptStyle: {
+        padding: "13px 15px", borderRadius: "13px",
+        background: s.transcript ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.025)",
+        border: "1px solid " + (s.transcript ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.06)"),
+        transition: "background .3s ease, border-color .3s ease",
+      },
+      hasIntent: !!s.liveIntent,
+      liveIntent: s.liveIntent,
+      suggestions: SEQ.slice(0, 3).map((e) => ({ label: e.speech.length > 34 ? e.speech.slice(0, 32) + "…" : e.speech, run: () => this.runCommand(e) })),
+      triggers: TRIGGERS,
+      device: s.device,
+      devicesOpen: s.devicesOpen,
+      toggleDevices: () => this.setState((p) => ({ devicesOpen: !p.devicesOpen })),
+      deviceList: DEVICES.map((d) => ({
+        label: d,
+        select: () => this.setState({ device: d, devicesOpen: false }),
+        style: {
+          width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px",
+          padding: "7px 9px", borderRadius: "7px", cursor: "pointer", fontFamily: "inherit", fontSize: "11.5px",
+          background: s.device === d ? "rgba(34,211,238,0.14)" : "transparent",
+          border: "1px solid " + (s.device === d ? "rgba(34,211,238,0.24)" : "transparent"),
+          color: s.device === d ? "#bae6fd" : "#c3cad2", textAlign: "left",
+        },
+        checkStyle: { fontSize: "11px", color: "#22d3ee", opacity: s.device === d ? 1 : 0 },
+      })),
+      toggleSettings: () => this.setState({ tab: "metrics" }),
+      togglePTT: this.togglePTT,
+      pttLabel: mode === "idle" ? "Gapirish uchun bosing" : "To'xtatish",
+      pttStyle: {
+        display: "flex", alignItems: "center", gap: "9px", padding: "8px 14px", borderRadius: "99px", cursor: "pointer",
+        fontFamily: "inherit", fontSize: "12px", fontWeight: 550,
+        background: mode === "idle" ? "rgba(255,255,255,0.07)" : "linear-gradient(135deg,#22d3ee,#818cf8)",
+        border: "1px solid " + (mode === "idle" ? "rgba(255,255,255,0.11)" : "rgba(255,255,255,0.22)"),
+        color: mode === "idle" ? "#e8ebee" : "#06121a",
+        boxShadow: mode === "idle" ? "none" : "0 0 26px -6px rgba(34,211,238,0.6)",
+        transition: "all .25s ease",
+      },
+      toggleMute: () => this.setState((p) => ({ muted: !p.muted })),
+      muted: s.muted,
+      muteLabel: s.muted ? "Ovoz o'chiq" : "Mikrofon yoniq",
+      muteIcon: s.muted
+        ? "M11 5L6 9H2v6h4l5 4V5zM22 9l-6 6M16 9l6 6"
+        : "M11 5L6 9H2v6h4l5 4V5zM15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13",
+      muteStyle: {
+        display: "flex", alignItems: "center", gap: "7px", padding: "7px 12px", borderRadius: "9px", cursor: "pointer",
+        fontFamily: "inherit", fontSize: "11.5px",
+        background: s.muted ? "rgba(251,113,133,0.10)" : "rgba(255,255,255,0.05)",
+        border: "1px solid " + (s.muted ? "rgba(251,113,133,0.24)" : "rgba(255,255,255,0.08)"),
+        color: s.muted ? "#fda4af" : "#b6bdc4",
+        transition: "all .2s ease",
+      },
+      sensitivity: s.sensitivity,
+      onSensClick: (ev) => {
+        const r = ev.currentTarget.getBoundingClientRect();
+        const v = Math.max(0, Math.min(100, Math.round(((ev.clientX - r.left) / r.width) * 100)));
+        this.setState({ sensitivity: v });
+      },
+      sensFillStyle: { width: s.sensitivity + "%", height: "100%", borderRadius: "99px", background: "linear-gradient(90deg,#7dd3fc,#22d3ee)" },
+      sensKnobStyle: {
+        position: "absolute", left: "calc(" + s.sensitivity + "% - 7px)", width: "14px", height: "14px", borderRadius: "50%",
+        background: "#f4f6f8", boxShadow: "0 1px 4px rgba(0,0,0,0.55)", pointerEvents: "none",
+      },
+      levelBars,
+      killAll: () => { this.stopAll(); this.setState({ mode: "idle", transcript: "", liveIntent: "" }); },
+    };
+  }
+}
+
+</script>
+</body>
+</html>

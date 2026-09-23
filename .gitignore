@@ -1,0 +1,16 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+*.spec
+voice_samples/
+benchmark_*.json
+reference/AI/
+.DS_Store
+*.app
+*.zip
