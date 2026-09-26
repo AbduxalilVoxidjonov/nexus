@@ -175,6 +175,8 @@ class Settings:
     wake_name: str = field(default_factory=lambda: os.getenv("WAKE_NAME", "Nexus"))
     wake_mode: str = field(default_factory=lambda: os.getenv("WAKE_MODE", "name"))
     wake_follow_up_s: float = field(default_factory=lambda: _env_float("WAKE_FOLLOW_UP_S", 8.0))
+    # Suhbat rejimi ("kel gaplashamiz"): shuncha soniya jimlikdan keyin o'zi tugaydi
+    conversation_idle_s: float = field(default_factory=lambda: _env_float("CONVERSATION_IDLE_S", 45.0))
 
     # UI ko'prigi
     ui_host: str = field(default_factory=lambda: os.getenv("UI_HOST", "127.0.0.1"))

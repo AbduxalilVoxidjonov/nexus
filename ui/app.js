@@ -79,7 +79,7 @@
     state: "idle",
     conn: { gemini: "disconnected", attempt: 0, detail: "" },
     metrics: {},
-    settings: { muted: false, ptt: false, sensitivity: 0.68, playback: null, wake_mode: null, name: "Nexus", dictating: false },
+    settings: { muted: false, ptt: false, sensitivity: 0.68, playback: null, wake_mode: null, name: "Nexus", dictating: false, conversation: false },
     confirm: null, confirmTimer: null,
     devices: [], currentDevice: null, devicesOpen: false,
     level: 0, levelAt: 0,
@@ -257,7 +257,7 @@
       case "DEVICES":
         applyDevices(d); renderDevices(); renderCards(); break;
       case "SETTINGS":
-        applySettings(d); renderPTT(); renderMute(); renderSens(); renderSettingsPanel(); renderCards(); renderDict(); renderSuggestions(); break;
+        applySettings(d); renderPTT(); renderMute(); renderSens(); renderSettingsPanel(); renderCards(); renderDict(); renderConv(); renderSuggestions(); break;
       case "CONFIRM_REQUEST":
         if (!replay) { setConfirm(d); toast("Tasdiq so'ralmoqda: " + short(d.summary || d.action || "", 80), "warn"); }
         break;
@@ -281,6 +281,7 @@
     if (typeof d.wake_mode === "string") S.settings.wake_mode = d.wake_mode;
     if (typeof d.name === "string" && d.name.trim()) S.settings.name = d.name.trim();
     if (typeof d.dictating === "boolean") S.settings.dictating = d.dictating;
+    if (typeof d.conversation === "boolean") S.settings.conversation = d.conversation;
   }
   function applyDevices(d) {
     S.devices = Array.isArray(d.devices) ? d.devices : [];
@@ -633,7 +634,7 @@
   function renderAll() {
     renderConn(); renderState(); renderTranscript(); renderToolLog(); renderHistory(); renderMetrics();
     renderCards(); renderDevices(); renderPTT(); renderMute(); renderSens(); renderSettingsPanel(); renderTabs(); renderShellLabel();
-    renderDict(); renderSuggestions(); renderConfirm();
+    renderDict(); renderConv(); renderSuggestions(); renderConfirm();
   }
 
   function renderDict() {
@@ -648,6 +649,17 @@
     const v = !(S.settings.dictating || S.state === "dictating");
     S.settings.dictating = v; renderDict();
     send("dictation", { value: v }).then((r) => { if (r && r.ok) toast(v ? "Diktovka yoqildi" : "Diktovka o'chirildi", "ok"); });
+  }
+
+  function renderConv() {
+    const on = !!S.settings.conversation, t = $("setConv"), sub = $("setConvSub");
+    if (t) t.classList.toggle("on", on);
+    if (sub) sub.textContent = on ? "faol · ismsiz gapiring, tugatish: \"bo'ldi, rahmat\"" : "ismsiz erkin suhbat · \"kel gaplashamiz\"";
+  }
+  function toggleConversation() {
+    const v = !S.settings.conversation;
+    S.settings.conversation = v; renderConv();
+    send("conversation", { value: v }).then((r) => { if (r && r.ok) toast(v ? "Suhbat rejimi yoqildi" : "Suhbat rejimi o'chirildi", "ok"); });
   }
 
   // ── Tasdiq kartasi ────────────────────────────────────────────────
@@ -774,6 +786,7 @@
     $("confirmNo").addEventListener("click", () => answerConfirm(false));
     if ($("dictBtn")) $("dictBtn").addEventListener("click", toggleDictation);
     if ($("setDict")) $("setDict").addEventListener("click", toggleDictation);
+    if ($("setConv")) $("setConv").addEventListener("click", toggleConversation);
     if ($("setMute")) $("setMute").addEventListener("click", toggleMute);
     $("setPlayback").addEventListener("click", () => {
       const v = !(S.settings.playback === true);

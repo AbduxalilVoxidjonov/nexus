@@ -283,6 +283,12 @@ Model "foydalanuvchi rozi bo'ldi" deb aytishiga ishonilmaydi — tasdiq faqat fo
 * `always` — har qanday ovozga javob beradi.
 * `smart` — ism, follow-up oynasi yoki buyruqqa o'xshash qisqa gap.
 
+**Suhbat rejimi** — "kel gaplashamiz", "suhbatlashaylik", "давай поговорим", "let's talk" deyilsa
+(ismsiz ham) yoqiladi: shundan keyin har savoldan oldin ism aytish shart emas, yordamchi oldingi gaplarni
+hisobga olib, ma'nosini tushunib javob beradi va suhbatni davom ettiradi. "Bo'ldi, rahmat", "suhbatni
+tugat", "xayr" yoki `CONVERSATION_IDLE_S` (45 s) jimlik rejimni tugatadi. UI sozlamalari va menyudan
+ham yoqiladi. Bu vaqtda xonadagi boshqa ovozlarga ham javob berilishi mumkin.
+
 Ism nutqda buziladi ("neksus", "нексус") — solishtirish Levenshtein masofasi bilan, tinish belgilari
 va apostroflarsiz. UI'dan `wake_mode` / `set_name` buyruqlari bilan o'zgartiriladi.
 
@@ -308,12 +314,12 @@ Hodisa: `{"type": "<TYPE>", "ts": <unix float>, "data": {...}}`. WebSocket `/ws`
 | `CONNECTION` | `{"gemini": "connected\|reconnecting\|disconnected", "attempt", "detail"}` |
 | `LOG` | `{"level": "info\|warn\|error", "message"}` |
 | `DEVICES` | `{"devices": [{"index","name","default"}], "current"}` |
-| `SETTINGS` | `{"muted","ptt","sensitivity","playback","wake_mode","name","dictating"}` |
+| `SETTINGS` | `{"muted","ptt","sensitivity","playback","wake_mode","name","dictating","conversation"}` |
 | `CONFIRM_REQUEST` | `{"token","action","summary","reason","ttl_s"}` |
 | `CONFIRM_RESOLVED` | `{"token","approved","source": "voice\|ui\|timeout\|cancelled"}` |
 
 UI → daemon buyruqlari: `mute`, `ptt`, `ptt_press`, `sensitivity`, `set_device`, `list_devices`,
-`kill_all`, `get_state`, `text`, `run_tool`, `confirm`, `wake_mode`, `set_name`, `dictation`
+`kill_all`, `get_state`, `text`, `run_tool`, `confirm`, `wake_mode`, `set_name`, `dictation`, `conversation`
 (formatlari `events.py` docstring'ida). HTTP: `GET /health`, `GET /api/state`.
 
 ---

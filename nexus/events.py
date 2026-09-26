@@ -18,7 +18,8 @@ Turlar:
     LOG           data={"level": "info|warn|error", "message": str}
     DEVICES       data={"devices": [{"index": int, "name": str, "default": bool}], "current": int|None}
     SETTINGS      data={"muted": bool, "ptt": bool, "sensitivity": float, "playback": bool,
-                        "wake_mode": "always|name|smart", "name": str, "dictating": bool}
+                        "wake_mode": "always|name|smart", "name": str, "dictating": bool,
+                        "conversation": bool}
     CONFIRM_REQUEST data={"token": str, "action": str, "summary": str, "reason": str, "ttl_s": int}
                   # xavfli amal tasdiq kutmoqda (og'zaki "ha" yoki UI tugmasi)
     CONFIRM_RESOLVED data={"token": str, "approved": bool, "source": "voice|ui|timeout|cancelled"}
@@ -36,6 +37,7 @@ UI -> daemon buyruqlari (JSON):
     {"cmd": "run_tool", "name": str, "args": dict}  # UI dan bevosita tool chaqirish
     {"cmd": "confirm", "token": str, "approve": bool}   # CONFIRM_REQUEST ga javob
     {"cmd": "wake_mode", "value": "always|name|smart"}
+    {"cmd": "conversation", "value": bool}  — suhbat rejimi (ismsiz erkin suhbat)
     {"cmd": "set_name", "value": str}
     {"cmd": "dictation", "value": bool}
 """

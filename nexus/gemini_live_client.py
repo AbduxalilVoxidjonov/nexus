@@ -50,7 +50,7 @@ from typing import Any
 
 from nexus.dictation import DictationState
 from nexus.events import EventBus
-from nexus.wake import MODES, WakeState
+from nexus.wake import MODES, WakeState, ends_conversation, wants_conversation
 
 log = logging.getLogger("nexus.gemini")
 
@@ -175,6 +175,7 @@ class GeminiLiveClient:
             name=str(getattr(settings, "wake_name", "Nexus") or ""),
             mode=str(getattr(settings, "wake_mode", "name") or "name"),
             follow_up_s=float(getattr(settings, "wake_follow_up_s", 8.0) or 8.0),
+            conversation_idle_s=float(getattr(settings, "conversation_idle_s", 45.0) or 45.0),
         )
         self.dictation = DictationState()
         self._addressed = True  # joriy navbat yordamchiga qaratilganmi
@@ -192,6 +193,7 @@ class GeminiLiveClient:
         self.bus.register_command("wake_mode", self._cmd_wake_mode)
         self.bus.register_command("set_name", self._cmd_set_name)
         self.bus.register_command("dictation", self._cmd_dictation)
+        self.bus.register_command("conversation", self._cmd_conversation)
 
         self.publish_settings()
 
@@ -705,6 +707,9 @@ class GeminiLiveClient:
 
     def _evaluate_addressed(self, text: str) -> None:
         """Wake rejimi bo'yicha joriy navbat bizga qaratilganmi (qisman transkriptda ham)."""
+        self.tick()
+        if not self.wake.conversation and wants_conversation(text):
+            self.set_conversation(True)  # "kel gaplashamiz" — ismsiz ham suhbat boshlanadi
         self._addressed = self.wake.should_act(text)
 
     def _finalize_user_turn(self) -> None:
@@ -721,6 +726,9 @@ class GeminiLiveClient:
             self._evaluate_addressed(text)
             if not self._addressed:
                 log.info("Ism aytilmadi (%s rejimi) — e'tibor berilmaydi: %s", self.wake.mode, text[:80])
+            elif self.wake.conversation and ends_conversation(text):
+                # Shu gapga (masalan "xayr") hali javob beriladi, keyingisi — yana faqat ism bilan
+                self.set_conversation(False)
         self._turn_start_ts = time.monotonic()
         self._first_audio_reported = False
         if self.bus.state in ("idle", "listening"):
@@ -786,10 +794,45 @@ class GeminiLiveClient:
         self.publish_settings()
         return active
 
+    # --- suhbat rejimi ---------------------------------------------------
+    def set_conversation(self, active: bool, reason: str = "", follow_up: bool = True) -> bool:
+        """Suhbat rejimi: ismsiz erkin suhbat; jimlikdan keyin o'zi tugaydi (`tick`)."""
+        active = bool(active)
+        if active == self.wake.conversation:
+            if active:
+                self.wake.start_conversation()  # oynani yangilash
+            return active
+        if active:
+            self.wake.start_conversation()
+            self._addressed = True
+            msg = "Suhbat rejimi yoqildi — ismsiz gapirish mumkin (tugatish: \"bo'ldi, rahmat\")"
+        else:
+            # Aniq tugatilganda xayrlashuv javobi uchun qisqa oyna qoladi (jimlikda — yo'q)
+            self.wake.stop_conversation(follow_up=follow_up)
+            msg = "Suhbat rejimi tugadi" + (f" ({reason})" if reason else "") + " — endi faqat ism bilan"
+        log.info(msg)
+        self.bus.publish("LOG", {"level": "info", "message": msg})
+        self.publish_settings()
+        return active
+
+    def tick(self) -> None:
+        """Davriy tekshiruv (MetricsTicker): jimlik tufayli suhbat rejimini tugatish."""
+        playing = bool(getattr(getattr(self.audio, "player", None), "is_playing", False))
+        if self.wake.conversation and playing:
+            self.wake.touch()  # yordamchi gapiryapti — jimlik hisoblanmaydi
+        elif self.wake.conversation_expired:
+            self.set_conversation(False, reason=f"{int(self.wake.conversation_idle_s)} s jimlik", follow_up=False)
+
+    async def _cmd_conversation(self, msg: dict[str, Any]) -> dict[str, Any]:
+        return {"conversation": self.set_conversation(bool(msg.get("value", True)), reason="qo'lda")}
+
     # --- wake -----------------------------------------------------------
     def publish_settings(self) -> dict[str, Any]:
         data = dict(self.bus.snapshot.get("SETTINGS") or {})
-        data.update({"wake_mode": self.wake.mode, "name": self.wake.name, "dictating": self.dictation.active})
+        data.update({
+            "wake_mode": self.wake.mode, "name": self.wake.name, "dictating": self.dictation.active,
+            "conversation": self.wake.conversation,
+        })
         self.bus.publish("SETTINGS", data)
         return data
 

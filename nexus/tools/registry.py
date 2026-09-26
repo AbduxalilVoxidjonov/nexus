@@ -578,6 +578,26 @@ class ToolRegistry:
         async def stop_dictation(a: dict):
             return await _dictation(False)
 
+        async def _conversation(on: bool):
+            if self.bus is None:
+                return False, "Suhbat rejimi ulanmagan (event bus yo'q)"
+            res = await self.bus.dispatch_command({"cmd": "conversation", "value": on})
+            if not res.get("ok"):
+                err = res.get("error") or "noma'lum xato"
+                return False, f"Suhbat rejimi mavjud emas: {err}"
+            if on:
+                return True, (
+                    "Suhbat rejimi yoqildi: endi foydalanuvchining hamma gapi senga qaratilgan, ism shart emas. "
+                    "Erkin suhbatlash, ma'nosini tushunib javob ber."
+                )
+            return True, "Suhbat rejimi tugadi: endi faqat ism bilan chaqirilganda javob berasan."
+
+        async def start_conversation(a: dict):
+            return await _conversation(True)
+
+        async def stop_conversation(a: dict):
+            return await _conversation(False)
+
         # -- brauzer --
         async def browser_open_url(a: dict):
             return await self.tabs.open_url(self._browser(a), a["url"])
@@ -696,6 +716,8 @@ class ToolRegistry:
             "say_text": say_text,
             "start_dictation": start_dictation,
             "stop_dictation": stop_dictation,
+            "start_conversation": start_conversation,
+            "stop_conversation": stop_conversation,
             "browser_open_url": browser_open_url,
             "browser_switch_tab": browser_switch_tab,
             "browser_close_tab": browser_close_tab,

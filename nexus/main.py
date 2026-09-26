@@ -105,6 +105,12 @@ class MetricsTicker:
         while True:
             info = await self._info()
             self.bus.publish("METRICS", self.build_payload(info))
+            tick = getattr(self.gemini, "tick", None)
+            if tick is not None:
+                try:
+                    tick()  # suhbat rejimi jimlik taymeri
+                except Exception as e:  # noqa: BLE001
+                    log.debug("gemini.tick xatosi: %s", e)
             await asyncio.sleep(self.interval)
 
 

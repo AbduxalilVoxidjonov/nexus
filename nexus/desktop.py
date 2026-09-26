@@ -581,6 +581,7 @@ if HAVE_COCOA:
             self.gemini = "disconnected"
             self.muted = False
             self.dictating = False
+            self.conversation = False
             self.confirm_pending = False
             # orb surish
             self._drag_offset: tuple[float, float] | None = None
@@ -722,6 +723,7 @@ if HAVE_COCOA:
             menu.addItem_(NSMenuItem.separatorItem())
             add("mute", "Mikrofonni o'chirish", "toggleMute:")
             add("dictation", "Diktovka", "toggleDictation:")
+            add("conversation", "Suhbat rejimi", "toggleConversation:")
             add("kill", "Hammasini to'xtatish", "killAll:")
             menu.addItem_(NSMenuItem.separatorItem())
             add("env", "Sozlamalar (.env)", "openEnv:")
@@ -885,6 +887,8 @@ if HAVE_COCOA:
                     self.muted = bool(d["muted"])
                 if "dictating" in d:
                     self.dictating = bool(d["dictating"])
+                if "conversation" in d:
+                    self.conversation = bool(d["conversation"])
             elif t == "CONFIRM_REQUEST":
                 self.confirm_pending = True
             elif t == "CONFIRM_RESOLVED":
@@ -908,10 +912,11 @@ if HAVE_COCOA:
             self.items["status"].setTitle_(title)
             self.items["mute"].setTitle_("Mikrofonni yoqish" if self.muted else "Mikrofonni o'chirish")
             self.items["dictation"].setTitle_("Diktovkani to'xtatish" if self.dictating else "Diktovka")
+            self.items["conversation"].setTitle_("Suhbatni tugatish" if self.conversation else "Suhbat rejimi")
             orb_shown = self.orb is not None and self.orb.isVisible()
             self.items["orb"].setTitle_("Orb yashirish" if orb_shown else "Orb ko'rsatish")
             self.items["orb"].setEnabled_(self.orb is not None)
-            for k in ("mute", "dictation", "kill"):
+            for k in ("mute", "dictation", "conversation", "kill"):
                 self.items[k].setEnabled_(alive)
             if self.status_item is not None:
                 self.status_item.button().setToolTip_(f"{APP_TITLE} — {title.lstrip('● ')}")
@@ -954,6 +959,9 @@ if HAVE_COCOA:
 
         def toggleDictation_(self, _sender: Any) -> None:
             self.runner.dispatch({"cmd": "dictation", "value": not self.dictating})
+
+        def toggleConversation_(self, _sender: Any) -> None:
+            self.runner.dispatch({"cmd": "conversation", "value": not self.conversation})
 
         def killAll_(self, _sender: Any) -> None:
             self.runner.dispatch({"cmd": "kill_all"})

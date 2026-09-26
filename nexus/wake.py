@@ -15,7 +15,13 @@ Rejimlar:
 
 Standart rejim — `name`: xonada boshqa odamlar gapirsa ham yordamchi faqat ismi
 bilan chaqirilgan buyruqqa javob beradi. Ism aytilgach `follow_up_s` (8 s) oyna
-ochiladi — "ha"/"yo'q" kabi qisqa javobga ism shart emas. `touch()` oynani yangilaydi (muvaffaqiyatli
+ochiladi — "ha"/"yo'q" kabi qisqa javobga ism shart emas.
+
+Suhbat rejimi ("kel gaplashamiz"): har gapdan oldin ism aytish shart emas — oxirgi
+gapdan keyin `conversation_idle_s` (45 s) davomida hamma gap yordamchiga qaratilgan
+hisoblanadi; jimlik yoki "bo'ldi, rahmat" / "suhbatni tugat" rejimni tugatadi.
+Bu vaqtda xonadagi boshqa ovozlarga ham javob berilishi mumkin — shuning uchun
+rejim faqat aniq iboralar bilan yoqiladi. `touch()` oynani yangilaydi (muvaffaqiyatli
 navbat / tool bajarilganda).
 """
 from __future__ import annotations
@@ -31,6 +37,7 @@ NAME = "name"
 SMART = "smart"
 MODES = (ALWAYS, NAME, SMART)
 
+DEFAULT_CONVERSATION_IDLE_S = 45.0
 DEFAULT_FOLLOW_UP_S = 8.0  # qisqa: oynada ismsiz har qanday ovozga (boshqa odamlarnikiga ham) javob beriladi
 
 _PUNCTUATION = re.compile(r"[^\w\s]", re.UNICODE)
@@ -55,6 +62,23 @@ _COMMAND_HINTS = (
 )
 _SMART_MAX_WORDS = 9
 
+# Suhbat rejimini yoqadigan iboralar (normallashtirilgan). "ertaga gaplashamiz" kabi xayrlashuv
+# iboralari ataylab yo'q — xonadagi suhbat tasodifan rejimni yoqmasin.
+_CONVERSATION_START = (
+    "kel gaplashamiz", "keling gaplashamiz", "kel gaplashaylik", "keling gaplashaylik", "qani gaplashaylik",
+    "kel suhbatlashamiz", "keling suhbatlashamiz", "kel suhbatlashaylik", "keling suhbatlashaylik",
+    "suhbatlashaylik", "suhbat qilaylik", "suhbat qilamiz", "suhbat rejimi", "suhbat rejimini yoq",
+    "gaplashib otiraylik", "gaplashib otiramiz",
+    "davai pogovorim", "davaite pogovorim", "davai poboltaem",  # давай/давайте (й → i)
+    "lets talk", "let s talk", "lets chat", "let s chat",
+)
+# Suhbat rejimini tugatadigan iboralar
+_CONVERSATION_STOP = (
+    "suhbatni tugat", "suhbatni toxtat", "suhbatni yakunla", "suhbat tugadi", "suhbat yetarli",
+    "boldi rahmat", "rahmat boldi", "boldi yetarli", "xayr", "hayr",
+    "xvatit", "poka", "stop talking", "that s all", "thats all", "bye",
+)
+
 
 def normalise(text: str) -> str:
     """Kichik harf, urg'u/apostrofsiz, tinish belgisiz; kirill → lotin."""
@@ -64,6 +88,21 @@ def normalise(text: str) -> str:
         folded = folded.replace(a, "")
     folded = "".join(_CYR.get(c, c) for c in folded)
     return _PUNCTUATION.sub(" ", folded)
+
+
+def _has_phrase(text: str, phrases: tuple[str, ...]) -> bool:
+    padded = " " + " ".join(normalise(text).split()) + " "
+    return any(f" {p} " in padded for p in phrases)
+
+
+def wants_conversation(text: str) -> bool:
+    """"kel gaplashamiz", "suhbatlashaylik", "давай поговорим", "let's talk" …"""
+    return _has_phrase(text, _CONVERSATION_START)
+
+
+def ends_conversation(text: str) -> bool:
+    """"bo'ldi, rahmat", "suhbatni tugat", "xayr" …"""
+    return _has_phrase(text, _CONVERSATION_STOP)
 
 
 def levenshtein(a: str, b: str, limit: int | None = None) -> int:
@@ -148,6 +187,8 @@ class WakeState:
     name: str = "Nexus"
     mode: str = NAME  # standart: faqat ism bilan chaqirilganda (xonadagi boshqa ovozlarga javob bermaydi)
     follow_up_s: float = DEFAULT_FOLLOW_UP_S
+    conversation_idle_s: float = DEFAULT_CONVERSATION_IDLE_S
+    conversation: bool = False  # suhbat rejimi ("kel gaplashamiz")
     _called_at: float = field(default=0.0, repr=False)
 
     def __post_init__(self) -> None:
@@ -165,10 +206,25 @@ class WakeState:
     # --- holat ---
     @property
     def engaged(self) -> bool:
-        """Oxirgi chaqiruvdan keyingi follow-up oynasi hali ochiqmi?"""
+        """Oxirgi chaqiruvdan keyingi oyna (follow-up yoki suhbat) hali ochiqmi?"""
         if not self._called_at:
             return False
-        return (time.monotonic() - self._called_at) < self.follow_up_s
+        window = self.conversation_idle_s if self.conversation else self.follow_up_s
+        return (time.monotonic() - self._called_at) < window
+
+    def start_conversation(self) -> None:
+        self.conversation = True
+        self._called_at = time.monotonic()
+
+    def stop_conversation(self, follow_up: bool = False) -> None:
+        """`follow_up` — aniq tugatilganda oddiy follow-up oynasi qoladi (xayrlashuv javobi eshitilsin)."""
+        self.conversation = False
+        self._called_at = time.monotonic() if follow_up else 0.0
+
+    @property
+    def conversation_expired(self) -> bool:
+        """Suhbat rejimi yoqilgan, lekin `conversation_idle_s` jimlikdan keyin tugashi kerak."""
+        return self.conversation and not self.engaged
 
     def heard(self, text: str) -> bool:
         """Matnda ism bormi? Bo'lsa follow-up oynasi ochiladi."""
@@ -189,6 +245,10 @@ class WakeState:
 
     def should_act(self, text: str) -> bool:
         """Bu gapga javob berish kerakmi? (ism eshitilsa oynani ham ochadi)."""
+        if self.conversation and self.engaged:
+            if text.strip():
+                self._called_at = time.monotonic()  # gapirilyapti — suhbat davom etadi
+            return True
         if self.mode == ALWAYS or not self.name:
             return True
         if self.heard(text):

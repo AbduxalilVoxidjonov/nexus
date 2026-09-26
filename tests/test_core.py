@@ -1037,7 +1037,7 @@ async def test_wake_commands_update_settings():
     assert r["ok"] is False
     r = await bus.dispatch_command({"cmd": "set_name", "value": "Luna"})
     assert r["ok"] and client.wake.name == "Luna"
-    assert bus.snapshot["SETTINGS"] == {"wake_mode": "smart", "name": "Luna", "dictating": False}
+    assert bus.snapshot["SETTINGS"] == {"wake_mode": "smart", "name": "Luna", "dictating": False, "conversation": False}
     r = await bus.dispatch_command({"cmd": "set_name", "value": "  "})
     assert r["ok"] is False
 
@@ -1553,3 +1553,95 @@ def test_wake_defaults_to_name_only(monkeypatch) -> None:
     s = Settings()
     assert s.wake_mode == "name" and s.wake_follow_up_s == 8.0
     assert WakeState(name="Nexus").mode == "name"
+
+
+# ---------------------------------------------------------------------------
+# Suhbat rejimi ("kel gaplashamiz")
+# ---------------------------------------------------------------------------
+def test_conversation_phrases() -> None:
+    from nexus.wake import ends_conversation, wants_conversation
+
+    for t in ("Kel gaplashamiz", "keling, suhbatlashaylik!", "Давай поговорим", "Let's talk", "gaplashib o'tiraylik"):
+        assert wants_conversation(t), t
+    for t in ("ertaga gaplashamiz", "Safarini och", "gaplashdingmi u bilan"):
+        assert not wants_conversation(t), t
+    for t in ("Bo'ldi, rahmat", "suhbatni tugat", "xayr", "ok bye"):
+        assert ends_conversation(t), t
+    assert ends_conversation("Хватит, пока")
+    assert not ends_conversation("rahmat, davom et")
+
+
+def test_wake_conversation_window_and_expiry(monkeypatch) -> None:
+    import nexus.wake as wake_mod
+    from nexus.wake import WakeState
+
+    now = [1000.0]
+    monkeypatch.setattr(wake_mod.time, "monotonic", lambda: now[0])
+    w = WakeState(name="Nexus", mode="name", follow_up_s=8, conversation_idle_s=45)
+    assert not w.should_act("qalaysan")
+    w.start_conversation()
+    now[0] += 30
+    assert w.should_act("qalaysan")  # ismsiz — suhbatda
+    now[0] += 40  # oxirgi gapdan 40 s (gap oynani yangiladi)
+    assert w.should_act("yana bir savol") and not w.conversation_expired
+    now[0] += 46
+    assert w.conversation_expired and not w.should_act("salom")
+    w.stop_conversation()
+    assert not w.conversation and not w.engaged
+    w.start_conversation()
+    w.stop_conversation(follow_up=True)  # "bo'ldi, rahmat" — xayrlashuv javobi eshitilsin
+    assert not w.conversation and w.engaged
+    now[0] += 9
+    assert not w.engaged
+
+
+async def test_conversation_mode_flow():
+    bus = EventBus()
+    bus.bind_loop()
+    audio = FakeAudio()
+    client = GeminiLiveClient(bus, make_settings(wake_mode="name"), FakeRegistry(), audio)
+    assert bus.snapshot["SETTINGS"]["conversation"] is False
+
+    # Ismsiz "kel gaplashamiz" → suhbat rejimi yoqiladi va javob beriladi
+    client._handle_server_content(_sc(input_transcription=SimpleNamespace(text="Kel gaplashamiz", finished=True)))
+    assert client._addressed is True and client.wake.conversation
+    assert bus.snapshot["SETTINGS"]["conversation"] is True
+    client._handle_server_content(_sc(turn_complete=True))
+
+    # Keyingi gap ismsiz ham yordamchiga qaratilgan
+    client._handle_server_content(
+        _sc(input_transcription=SimpleNamespace(text="Koinotda nechta galaktika bor?", finished=True))
+    )
+    assert client._addressed is True
+    client._handle_server_content(_sc(model_turn=SimpleNamespace(parts=[_audio_part()])))
+    assert audio.player.pending_bytes() > 0
+    client._handle_server_content(_sc(turn_complete=True))
+
+    # "Bo'ldi, rahmat" — shu gapga javob beriladi, keyin rejim tugaydi
+    client._handle_server_content(_sc(input_transcription=SimpleNamespace(text="Bo'ldi, rahmat", finished=True)))
+    assert client._addressed is True and not client.wake.conversation
+    assert bus.snapshot["SETTINGS"]["conversation"] is False
+    client._handle_server_content(_sc(turn_complete=True))
+    assert client._addressed is True  # xayrlashuv (tool javobidan keyingi navbat) hali eshitiladi
+    client.wake._called_at -= client.wake.follow_up_s + 1
+    client._handle_server_content(_sc(input_transcription=SimpleNamespace(text="Safarini och", finished=True)))
+    assert client._addressed is False  # yana faqat ism bilan
+
+
+async def test_conversation_command_and_idle_tick():
+    bus = EventBus()
+    bus.bind_loop()
+    client = GeminiLiveClient(bus, make_settings(wake_mode="name"), FakeRegistry(), FakeAudio())
+    r = await bus.dispatch_command({"cmd": "conversation", "value": True})
+    assert r["ok"] and r["conversation"] is True
+    client.wake._called_at -= client.wake.conversation_idle_s + 1  # 45 s jimlik
+    client.tick()
+    assert client.wake.conversation is False
+    assert bus.snapshot["SETTINGS"]["conversation"] is False
+
+
+def test_conversation_tools_registered():
+    from nexus.tools.registry import ToolRegistry
+
+    r = ToolRegistry()
+    assert r.has("start_conversation") and r.has("stop_conversation")
