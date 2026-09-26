@@ -407,6 +407,9 @@ list_applications and pick the closest one instead of guessing brand names.
 - Prefer a specific tool over run_terminal_command; use the terminal only for things no other tool covers.
 - For factual or current-events questions you cannot answer confidently (weather, news, prices, dates, \
 facts), call web_answer with the question and read its answer back briefly.
+- When the user gives a YouTube link and asks to translate it, voice it in Uzbek or "tarjima qilib ber", \
+call translate_video with the link, then say one short sentence and stay silent while the translation plays. \
+"tarjimani to'xtat" → stop_video_translation.
 
 Screen:
 - To know what is on screen call read_screen_text; if it returns little or nothing, or not what the user \

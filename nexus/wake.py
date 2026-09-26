@@ -13,8 +13,9 @@ Rejimlar:
     name   — faqat ism aytilganda yoki follow-up oynasi ochiq bo'lsa
     smart  — ism, follow-up oynasi, yoki buyruqqa o'xshash qisqa gap
 
-Ism aytilgach `follow_up_s` sekundlik oyna ochiladi — besh bosqichli ishda har
-gapdan oldin ism aytish shart emas. `touch()` oynani yangilaydi (muvaffaqiyatli
+Standart rejim — `name`: xonada boshqa odamlar gapirsa ham yordamchi faqat ismi
+bilan chaqirilgan buyruqqa javob beradi. Ism aytilgach `follow_up_s` (8 s) oyna
+ochiladi — "ha"/"yo'q" kabi qisqa javobga ism shart emas. `touch()` oynani yangilaydi (muvaffaqiyatli
 navbat / tool bajarilganda).
 """
 from __future__ import annotations
@@ -30,7 +31,7 @@ NAME = "name"
 SMART = "smart"
 MODES = (ALWAYS, NAME, SMART)
 
-DEFAULT_FOLLOW_UP_S = 25.0
+DEFAULT_FOLLOW_UP_S = 8.0  # qisqa: oynada ismsiz har qanday ovozga (boshqa odamlarnikiga ham) javob beriladi
 
 _PUNCTUATION = re.compile(r"[^\w\s]", re.UNICODE)
 _APOSTROPHES = ("'", "`", "ʻ", "ʼ", "’", "‘")
@@ -145,7 +146,7 @@ class WakeState:
     """Yordamchi hozir unga gapirilayotganini kuzatadi."""
 
     name: str = "Nexus"
-    mode: str = ALWAYS
+    mode: str = NAME  # standart: faqat ism bilan chaqirilganda (xonadagi boshqa ovozlarga javob bermaydi)
     follow_up_s: float = DEFAULT_FOLLOW_UP_S
     _called_at: float = field(default=0.0, repr=False)
 

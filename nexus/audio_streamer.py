@@ -5,13 +5,14 @@
 uzatiladi) va UI uchun `AUDIO_LEVEL` hodisalarini nashr qiladi.
 
 `AudioPlayer` — Gemini'dan kelgan 24 kHz int16 mono PCM'ni ijro etadi;
-prebuffer (~220 ms) yig'ilgach ijro boshlanadi (jitter), `play_out()` qolganini
+prebuffer (~220 ms, underrun'da o'sadi) yig'ilgach ijro boshlanadi (jitter), `play_out()` qolganini
 darhol chiqaradi (navbat tugaganda), `clear()` navbatni tozalaydi (barge-in).
 
 Echo guard: yordamchi gapirayotganda (`player.is_playing`) mikrofon chunklari
 o'rniga sukunat yuboriladi — server VAD o'z ovozini eshitmasin; lekin RMS
-bo'sag'aning `echo_barge_factor` barobaridan baland bo'lsa (foydalanuvchi
-gapiryapti) chunk o'tkaziladi (barge-in saqlanadi).
+bo'sag'aning `echo_barge_factor` barobaridan `echo_barge_min_ms` davomida uzluksiz
+baland bo'lsa (foydalanuvchi gapiryapti) chunklar o'tkaziladi (barge-in saqlanadi,
+`BargeInGate`). Bitta echo cho'qqisi javobni uzib qo'ymaydi.
 
 Toza (side-effect'siz) funksiyalar — `compute_rms`, `should_forward`,
 `gate_open`, `echo_gate` — testlarda alohida tekshiriladi.
@@ -100,7 +101,69 @@ def echo_gate(rms: float, threshold: float, playing: bool, guard: bool = True, f
 # Mikrofon navbatiga qo'yiladigan boshqaruv markerlari (PTT rejimida VAD o'chiq bo'lganda)
 MARK_ACTIVITY_START = "activity_start"
 MARK_ACTIVITY_END = "activity_end"
-PLAYING_TAIL_S = 0.25  # oxirgi real chunk chiqqach shuncha vaqt "ijro" deb hisoblanadi
+PLAYING_TAIL_S = 0.25  # oxirgi real chunk chiqqach (+ oqim latency'si) shuncha vaqt "ijro" deb hisoblanadi
+PREBUFFER_GROWTH = 1.5  # navbat o'rtasida bufer bo'shasa (underrun) prebuffer shuncha barobar oshadi
+PREBUFFER_MAX_MS = 600
+
+
+def parse_latency(value: Any) -> str | float:
+    """"high"/"low" yoki sekund (str/float) → sounddevice `latency` argumenti."""
+    if isinstance(value, (int, float)):
+        return float(value)
+    v = str(value or "").strip().lower()
+    if v in ("high", "low"):
+        return v
+    try:
+        return max(0.0, float(v))
+    except ValueError:
+        return "high"
+
+
+# ---------------------------------------------------------------------------
+# Barge-in darvozasi
+# ---------------------------------------------------------------------------
+class BargeInGate:
+    """Ijro paytida mikrofon chunklarining echo/barge-in darvozasi (callback thread'da).
+
+    Karnaydan qaytgan bitta baland chunk (portlovchi tovush) serverga o'tsa, server VAD
+    uni gap deb biladi va javobni `interrupted` bilan uzadi. Shuning uchun barge-in faqat
+    `min_ms` davomida uzluksiz baland ovozdan so'ng ochiladi. Shubhali chunklar ushlab
+    turiladi (hech narsa yuborilmaydi): ochilsa — asl holida (gap boshi yo'qolmaydi),
+    echo bo'lib chiqsa — sukunat sifatida yuboriladi (vaqt o'qi uzilmaydi). Ochilgach
+    oxirgi baland chunkdan keyin `hold_ms` ochiq turadi — so'zlar orasidagi pauza
+    sukunatga aylanib, gap bo'linib ketmasin."""
+
+    def __init__(self, chunk_ms: int, min_ms: int = 160, hold_ms: int = 600) -> None:
+        self.need = max(1, math.ceil(max(0, int(min_ms)) / max(1, int(chunk_ms))))
+        self.hold_s = max(0, int(hold_ms)) / 1000.0
+        self._held: list[bytes] = []
+        self._open_until = 0.0
+
+    def reset(self) -> None:
+        self._held = []
+        self._open_until = 0.0
+
+    def process(self, chunk: bytes, loud: bool, playing: bool, now: float) -> tuple[list[bytes], int]:
+        """→ (navbatga qo'yiladigan chunklar, sukunatga almashtirilganlar soni)."""
+        if not playing:
+            out = [*self._held, chunk]
+            self.reset()
+            return out, 0
+        if now < self._open_until:
+            if loud:
+                self._open_until = now + self.hold_s
+            return [chunk], 0
+        if loud:
+            self._held.append(chunk)
+            if len(self._held) >= self.need:
+                out, self._held = self._held, []
+                self._open_until = now + self.hold_s
+                return out, 0
+            return [], 0
+        # Jim — ushlab turilganlar ham echo cho'qqisi bo'lgan: hammasi sukunat
+        out = [b"\x00" * len(c) for c in (*self._held, chunk)]
+        self._held = []
+        return out, len(out)
 
 
 # ---------------------------------------------------------------------------
@@ -165,7 +228,10 @@ class AudioPlayer:
     """24 kHz int16 mono ijro. `enqueue` istalgan thread/task'dan chaqirilishi mumkin.
 
     `prebuffer_ms` > 0 bo'lsa, birinchi chunklar yig'ilib (armed) keyin ijro
-    boshlanadi; `play_out()` bufer to'lmasa ham ijroni boshlaydi."""
+    boshlanadi; `play_out()` bufer to'lmasa ham ijroni boshlaydi va navbatni
+    "yakuniy" deb belgilaydi. Yakuniy bo'lmagan navbat o'rtasida bufer bo'shasa
+    (tarmoq jitter'i — underrun), shu javob oxirigacha prebuffer kattalashtiriladi —
+    ijro qayta-qayta tutilib qolmasin."""
 
     def __init__(
         self,
@@ -173,20 +239,31 @@ class AudioPlayer:
         enabled: bool = True,
         bus: EventBus | None = None,
         prebuffer_ms: int = 0,
+        latency: str | float = "high",
     ) -> None:
         self.sample_rate = sample_rate
         self.enabled = enabled
         self._bus = bus
+        self.latency = parse_latency(latency)
+        self.output_latency = 0.0  # oqim ochilgach haqiqiy qiymat (sekund)
         self._queue: deque[bytes] = deque()
         self._lock = threading.Lock()
         self._leftover = b""
         self._stream: Any = None
         self.prebuffer_ms = max(0, int(prebuffer_ms))
         self._prebuffer_bytes = int(self.sample_rate * self.prebuffer_ms / 1000) * 2
+        self._max_prebuffer_bytes = max(
+            self._prebuffer_bytes, int(self.sample_rate * PREBUFFER_MAX_MS / 1000) * 2
+        )
+        self._target = self._prebuffer_bytes  # joriy javob uchun prebuffer (underrun'da o'sadi)
         self._armed = self._prebuffer_bytes == 0
+        self._final = False  # play_out() chaqirildi — navbatga boshqa audio kelmaydi
         self._pending = 0  # navbat + leftover baytlar
         self._last_out_ts = 0.0  # oxirgi real (nol bo'lmagan) chunk chiqqan payt
         self.chunks_played = 0
+        self.underruns = 0  # javob o'rtasida bufer bo'shab qolgan holatlar
+        self.xruns = 0  # PortAudio output_underflow (callback kechikdi)
+        self.hold = False  # True — ijro to'xtab turadi (navbat saqlanadi), False — davom etadi
 
     # --- hayot sikli ---
     def start(self) -> None:
@@ -199,10 +276,17 @@ class AudioPlayer:
                 channels=1,
                 dtype="int16",
                 blocksize=int(self.sample_rate * 0.02),  # 20 ms
+                latency=self.latency,
                 callback=self._callback,
             )
             self._stream.start()
-            log.info("Ovoz chiqish oqimi ochildi (%d Hz)", self.sample_rate)
+            try:
+                self.output_latency = max(0.0, float(getattr(self._stream, "latency", 0.0) or 0.0))
+            except (TypeError, ValueError):
+                self.output_latency = 0.0
+            log.info(
+                "Ovoz chiqish oqimi ochildi (%d Hz, latency %.0f ms)", self.sample_rate, self.output_latency * 1000
+            )
         except Exception as e:  # noqa: BLE001
             self._stream = None
             self.enabled = False
@@ -225,14 +309,20 @@ class AudioPlayer:
         if not data:
             return
         with self._lock:
+            if self._final and not self._pending:
+                self._target = self._prebuffer_bytes  # yangi javob — boshlang'ich prebuffer
+            self._final = False
             self._queue.append(bytes(data))
             self._pending += len(data)
-            if not self._armed and self._pending >= self._prebuffer_bytes:
+            if not self._armed and self._pending >= self._target:
                 self._armed = True
 
     def play_out(self) -> None:
-        """Buferdagi qolgan audioni (prebuffer to'lmagan bo'lsa ham) ijroga qo'yib yuboradi."""
+        """Buferdagi qolgan audioni (prebuffer to'lmagan bo'lsa ham) ijroga qo'yib yuboradi.
+
+        Javob yakunlandi (generation_complete / turn_complete) — navbat bo'shashi underrun emas."""
         with self._lock:
+            self._final = True
             if self._pending:
                 self._armed = True
 
@@ -244,6 +334,8 @@ class AudioPlayer:
             self._leftover = b""
             self._pending = 0
             self._armed = self._prebuffer_bytes == 0
+            self._target = self._prebuffer_bytes
+            self._final = False
             self._last_out_ts = 0.0
         return n
 
@@ -261,14 +353,17 @@ class AudioPlayer:
         with self._lock:
             if self._pending:
                 return True
-            return bool(self._last_out_ts) and (time.monotonic() - self._last_out_ts) < PLAYING_TAIL_S
+            tail = PLAYING_TAIL_S + self.output_latency  # karnaydan hali chiqayotgan qism
+            return bool(self._last_out_ts) and (time.monotonic() - self._last_out_ts) < tail
 
     # --- PortAudio callback (alohida thread) ---
     def _callback(self, outdata: Any, frames: int, time_info: Any, status: Any) -> None:
         need = frames * 2  # int16 mono
         buf = bytearray()
+        if status and getattr(status, "output_underflow", False):
+            self.xruns += 1
         with self._lock:
-            if self._armed:
+            if self._armed and not self.hold:
                 if self._leftover:
                     buf += self._leftover
                     self._leftover = b""
@@ -281,9 +376,18 @@ class AudioPlayer:
                 if buf:
                     self._last_out_ts = time.monotonic()
                     self.chunks_played += 1
-                if self._pending == 0 and self._prebuffer_bytes:
-                    # Bufer bo'shadi — keyingi javob yana prebuffer bilan boshlansin
-                    self._armed = False
+                if self._prebuffer_bytes:
+                    if self._pending == 0 and self._final:
+                        # Javob tugadi — keyingisi yana boshlang'ich prebuffer bilan boshlansin
+                        self._armed = False
+                        self._target = self._prebuffer_bytes
+                    elif len(buf) < need:
+                        # Javob o'rtasida bufer bo'shadi (jitter) — kattaroq bufer yig'ib davom etamiz
+                        self._armed = False
+                        self.underruns += 1
+                        self._target = min(
+                            self._max_prebuffer_bytes, int(self._target * PREBUFFER_GROWTH) // 2 * 2
+                        )
             if len(buf) < need:
                 # Navbat bo'sh (yoki hali armed emas) — nol (sukunat) bilan to'ldiramiz
                 buf += b"\x00" * (need - len(buf))
@@ -329,16 +433,24 @@ class AudioStreamer:
         self.upstream_paused: bool = False
         self.echo_guard: bool = bool(getattr(settings, "echo_guard", True))
         self.echo_barge_factor: float = float(getattr(settings, "echo_barge_factor", 3.0))
+        self._barge = BargeInGate(
+            self.chunk_ms,
+            min_ms=int(getattr(settings, "echo_barge_min_ms", 160)),
+            hold_ms=int(getattr(settings, "echo_barge_hold_ms", 600)),
+        )
 
         # Gemini mijozi uchun ilgaklar (PTT rejimi o'zgarganda VAD konfiguratsiyasi, bosish → activity signallari)
         self.on_ptt_mode_change: Callable[[bool], None] | None = None
         self.on_ptt_press: Callable[[bool], None] | None = None
+        # Boshqa ijro manbai (masalan, video tarjimasi) ovoz chiqaryaptimi — echo guard uni ham hisobga oladi
+        self.extra_playing: Callable[[], bool] | None = None
 
         self.player = AudioPlayer(
             sample_rate=int(settings.output_sample_rate),
             enabled=bool(getattr(settings, "playback_enabled", True)),
             bus=bus,
             prebuffer_ms=int(getattr(settings, "playback_prebuffer_ms", 0)),
+            latency=getattr(settings, "playback_latency", "high"),
         )
 
     # --- hayot sikli -------------------------------------------------
@@ -431,18 +543,31 @@ class AudioStreamer:
             self.bus.publish("AUDIO_LEVEL", {"rms": round(rms, 4), "db": round(db, 1)})
 
         if not self._running or self.upstream_paused:
+            self._barge.reset()
             return False
         if not should_forward(self.muted, self.ptt_mode, self.ptt_pressed):
+            self._barge.reset()
             return False
         loop, q = self._loop, self._queue
         if loop is None or q is None or loop.is_closed():
             return False
-        if not echo_gate(rms, self._threshold, self.player.is_playing, self.echo_guard, self.echo_barge_factor):
-            # Yordamchi gapiryapti, foydalanuvchi jim — oqim uzluksiz qolsin, lekin sukunat ketsin
-            self._echo_suppressed += 1
-            chunk = b"\x00" * len(chunk)
-        loop.call_soon_threadsafe(self._enqueue, chunk)
+        playing = self.echo_guard and (self.player.is_playing or self._extra_is_playing())
+        loud = echo_gate(rms, self._threshold, playing, self.echo_guard, self.echo_barge_factor)
+        # Yordamchi gapirayotganda: echo → sukunat (oqim uzluksiz), uzluksiz baland gap → barge-in
+        out, suppressed = self._barge.process(chunk, loud, playing, now)
+        self._echo_suppressed += suppressed
+        for c in out:
+            loop.call_soon_threadsafe(self._enqueue, c)
         return True
+
+    def _extra_is_playing(self) -> bool:
+        fn = self.extra_playing
+        if fn is None:
+            return False
+        try:
+            return bool(fn())
+        except Exception:  # noqa: BLE001
+            return False
 
     def _enqueue(self, chunk: bytes | str) -> None:
         q = self._queue

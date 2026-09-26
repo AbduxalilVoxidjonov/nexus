@@ -929,7 +929,12 @@ async def test_streamer_echo_guard_sends_silence_and_upstream_pause(fake_sd):
     loud = sine_pcm(0.5)
     assert st._process_chunk(loud) is True
     await asyncio.sleep(0)
-    assert st._queue.get_nowait() == loud  # barge-in — asl chunk
+    assert st._queue.empty()  # bitta cho'qqi — hali barge-in emas, ushlab turiladi
+    for _ in range(st._barge.need - 1):
+        st._process_chunk(loud)
+    await asyncio.sleep(0)
+    items = [st._queue.get_nowait() for _ in range(st._queue.qsize())]
+    assert items == [loud] * st._barge.need  # uzluksiz gap — barge-in, asl chunklar (boshi yo'qolmagan)
     st.player.clear()
 
     st.pause_upstream()
@@ -1485,3 +1490,66 @@ async def test_quota_error_drops_google_search_first(monkeypatch):
     assert any(isinstance(t.google_search, types.GoogleSearch) for t in c1.tools)
     assert all(t.google_search is None for t in c2.tools)
     assert c2.thinking_config is not None  # faqat google_search tashlandi, thinking saqlandi
+
+
+# ---------------------------------------------------------------------------
+# BargeInGate — echo cho'qqisi javobni uzmasin
+# ---------------------------------------------------------------------------
+def test_barge_gate_single_spike_becomes_silence():
+    g = am.BargeInGate(chunk_ms=20, min_ms=60, hold_ms=100)  # need = 3
+    assert g.process(b"\x01\x01", True, True, 0.0) == ([], 0)  # ushlab turildi
+    out, n = g.process(b"\x02\x02", False, True, 0.02)  # jim — cho'qqi echo edi
+    assert out == [b"\x00\x00", b"\x00\x00"] and n == 2
+
+
+def test_barge_gate_sustained_opens_and_holds():
+    g = am.BargeInGate(chunk_ms=20, min_ms=60, hold_ms=100)
+    g.process(b"a", True, True, 0.00)
+    g.process(b"b", True, True, 0.02)
+    assert g.process(b"c", True, True, 0.04) == ([b"a", b"b", b"c"], 0)
+    assert g.process(b"d", False, True, 0.10) == ([b"d"], 0)  # hold — so'zlar orasidagi pauza
+    assert g.process(b"e", False, True, 0.20) == ([b"\x00"], 1)  # hold tugadi
+
+
+def test_barge_gate_flushes_held_when_playback_stops():
+    g = am.BargeInGate(chunk_ms=20, min_ms=60, hold_ms=100)
+    g.process(b"a", True, True, 0.0)
+    assert g.process(b"b", True, False, 0.02) == ([b"a", b"b"], 0)
+
+
+def test_player_underrun_grows_prebuffer_and_resets_after_turn():
+    p = AudioPlayer(sample_rate=1000, enabled=False, prebuffer_ms=100)  # 200 bayt
+    out = bytearray(100)
+    p.enqueue(b"\x01\x02" * 100)  # 200 bayt — armed
+    p._callback(out, 50, None, None)
+    p._callback(out, 50, None, None)
+    assert p.armed is True  # navbat yakuniy emas, bufer aynan tugadi — hali underrun emas
+    p._callback(out, 50, None, None)  # hech narsa yo'q — underrun
+    assert p.underruns == 1 and p.armed is False
+    p.enqueue(b"\x01\x02" * 100)  # 200 bayt — endi yetarli emas (300 kerak)
+    assert p.armed is False
+    p.enqueue(b"\x01\x02" * 50)
+    assert p.armed is True
+    p.play_out()
+    for _ in range(3):
+        p._callback(out, 50, None, None)
+    assert p.armed is False and p.underruns == 1  # yakuniy navbat tugashi underrun emas
+    p.enqueue(b"\x01\x02" * 100)  # yangi javob — yana 200 bayt yetarli
+    assert p.armed is True
+
+
+def test_parse_latency():
+    assert am.parse_latency("HIGH") == "high"
+    assert am.parse_latency("0.08") == 0.08
+    assert am.parse_latency("x") == "high"
+
+
+def test_wake_defaults_to_name_only(monkeypatch) -> None:
+    from nexus.config import Settings
+    from nexus.wake import WakeState
+
+    monkeypatch.delenv("WAKE_MODE", raising=False)
+    monkeypatch.delenv("WAKE_FOLLOW_UP_S", raising=False)
+    s = Settings()
+    assert s.wake_mode == "name" and s.wake_follow_up_s == 8.0
+    assert WakeState(name="Nexus").mode == "name"

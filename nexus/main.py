@@ -280,6 +280,12 @@ async def run(
     audio = AudioStreamer(bus, settings, loop=loop)
     audio.register_commands()
     audio.start()
+    try:
+        from nexus import video_translate
+
+        video_translate.attach(bus, settings, audio)
+    except Exception as e:  # noqa: BLE001
+        log.debug("video_translate ulanmadi: %s", e)
 
     # UI
     ui_server: Any = None
@@ -329,6 +335,12 @@ async def run(
     finally:
         log.info("To'xtatilmoqda...")
         await gemini.stop()
+        try:
+            from nexus import video_translate
+
+            await video_translate.shutdown()
+        except Exception as e:  # noqa: BLE001
+            log.debug("video_translate shutdown xatosi: %s", e)
         for t in tasks:
             t.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)

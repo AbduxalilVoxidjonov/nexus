@@ -149,8 +149,14 @@ class Settings:
     echo_guard: bool = field(default_factory=lambda: _env_bool("ECHO_GUARD", True))
     # Ijro paytida foydalanuvchi gapirsa (barge-in) — RMS bo'sag'aning necha barobaridan oshsa o'tkaziladi
     echo_barge_factor: float = field(default_factory=lambda: _env_float("ECHO_BARGE_FACTOR", 3.0))
+    # Barge-in ochilishi uchun uzluksiz baland ovoz davomiyligi (ms) — qisqa echo cho'qqisi javobni uzmasin
+    echo_barge_min_ms: int = field(default_factory=lambda: _env_int("ECHO_BARGE_MIN_MS", 160))
+    # Barge-in ochilgach oxirgi baland chunkdan keyin ham shuncha ochiq turadi (ms)
+    echo_barge_hold_ms: int = field(default_factory=lambda: _env_int("ECHO_BARGE_HOLD_MS", 600))
     # Ijrodan oldin yig'iladigan jitter-bufer (ms)
     playback_prebuffer_ms: int = field(default_factory=lambda: _env_int("PLAYBACK_PREBUFFER_MS", 220))
+    # Chiqish oqimi latency'si: "high" (barqaror, chirsillamaydi) | "low" | sekund (masalan 0.08)
+    playback_latency: str = field(default_factory=lambda: os.getenv("PLAYBACK_LATENCY", "high"))
 
     # Gemini server-VAD (LOW/HIGH)
     vad_start_sensitivity: str = field(default_factory=lambda: os.getenv("VAD_START_SENSITIVITY", "LOW"))
@@ -167,8 +173,8 @@ class Settings:
 
     # Ism bilan chaqirish (wake): always | name | smart
     wake_name: str = field(default_factory=lambda: os.getenv("WAKE_NAME", "Nexus"))
-    wake_mode: str = field(default_factory=lambda: os.getenv("WAKE_MODE", "always"))
-    wake_follow_up_s: float = field(default_factory=lambda: _env_float("WAKE_FOLLOW_UP_S", 25.0))
+    wake_mode: str = field(default_factory=lambda: os.getenv("WAKE_MODE", "name"))
+    wake_follow_up_s: float = field(default_factory=lambda: _env_float("WAKE_FOLLOW_UP_S", 8.0))
 
     # UI ko'prigi
     ui_host: str = field(default_factory=lambda: os.getenv("UI_HOST", "127.0.0.1"))
@@ -184,6 +190,12 @@ class Settings:
     screenshot_dir: Path = field(
         default_factory=lambda: Path(os.getenv("SCREENSHOT_DIR", "~/Desktop")).expanduser()
     )
+
+    # Video tarjimasi (translate_video): model bo'sh = GEMINI_MODEL; rejim prompt|native
+    video_translate_model: str = field(default_factory=lambda: os.getenv("VIDEO_TRANSLATE_MODEL", "").strip())
+    video_translate_mode: str = field(default_factory=lambda: os.getenv("VIDEO_TRANSLATE_MODE", "prompt").strip())
+    # Parallel tarjimon sessiyalari (bittasi band paytda kelgan gaplarni tashlab yuboradi)
+    video_translate_sessions: int = field(default_factory=lambda: _env_int("VIDEO_TRANSLATE_SESSIONS", 5))
 
     log_level: str = field(default_factory=lambda: os.getenv("LOG_LEVEL", "INFO"))
 

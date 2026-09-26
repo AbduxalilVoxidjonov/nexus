@@ -80,7 +80,7 @@ cp .env.example .env        # so'ng GEMINI_API_KEY ni yozing
 | `VAD_START_SENSITIVITY` / `VAD_END_SENSITIVITY` | `LOW` / `HIGH` | Gemini server-VAD (HIGH start — o'z ovozini eshitib qoladi) |
 | `TRANSCRIPTION_LANGUAGES` | `uz-UZ,ru-RU,en-US` | kiruvchi transkripsiya tillari |
 | `SESSION_RESUMPTION` / `CONTEXT_COMPRESSION` | `true` | uzoq sessiyalar uchun |
-| `WAKE_NAME` / `WAKE_MODE` / `WAKE_FOLLOW_UP_S` | `Nexus` / `always` / `25` | ism bilan chaqirish |
+| `WAKE_NAME` / `WAKE_MODE` / `WAKE_FOLLOW_UP_S` | `Nexus` / `name` / `8` | ism bilan chaqirish |
 | `UI_HOST` / `UI_PORT` / `SERVE_UI` | `127.0.0.1` / `8765` / `true` | UI ko'prigi |
 | `ALLOW_TERMINAL` | `true` | `run_terminal_command` yoqilganmi |
 | `SCREENSHOT_DIR` | `~/Desktop` | skrinshot papkasi |
@@ -168,7 +168,7 @@ zsh scripts/build_app.sh              # → dist/Nexus Ovoz OS.app (Info.plist: 
 ## Tool ro'yxati
 
 Asosiy sxemalar `nexus/tools/schemas.py` da (45 ta), kengaytmalar `nexus/file_actions.py` (10 ta)
-va `nexus/ax_actions.py` (7 ta) — jami **62 ta**. Registry kengaytmalarni `EXTENSION_MODULES`
+va `nexus/ax_actions.py` (7 ta) va boshqalar (`web_answer`, `screen_reader`, `video_translate`). Registry kengaytmalarni `EXTENSION_MODULES`
 orqali yuklaydi; modul `TOOL_DECLARATIONS` va `HANDLERS` eksport qiladi.
 
 **Tizim (macos_actions):** `launch_app` (fuzzy nom), `list_applications`, `quit_app`, `set_volume`,
@@ -182,6 +182,29 @@ orqali yuklaydi; modul `TOOL_DECLARATIONS` va `HANDLERS` eksport qiladi.
 `browser_close_tab`, `browser_reload`, `browser_current_page`, `browser_list_tabs`, `browser_scroll`,
 `browser_click_button`, `browser_click_selector`, `browser_read_page`, `browser_type_and_search`,
 `web_search`, `search_get_results`, `search_open_result`, `search_navigate_page`, `youtube_control`.
+
+**Video tarjimasi (video_translate):** `translate_video(url, browser?, original_volume?, target_language?)`,
+`stop_video_translation`. YouTube havolasi berilsa ("shu videoni o'zbekchaga tarjima qilib ber") video
+brauzerda ochiladi, asl ovozi o'chiriladi va Nexus uni o'zbekcha ovoz bilan **dublyaj** qiladi:
+
+- `yt-dlp` audioni oldindan yuklaydi (shu vaqtda video pauzada), `ffmpeg` 16 kHz PCM beradi;
+- audio gap orasidagi jimlikda 2.5–5 s bo'laklarga bo'linadi va videodan **15 s oldinda** parallel Gemini
+  Live sessiyalarida tarjima qilinadi — har bir bo'lak uchun yangi sessiya (jim bo'laklar yuborilmaydi);
+- har bir tarjima videoda o'z joyiga yetganda ijro etiladi; sig'masa ohangini o'zgartirmay 1.3x gacha
+  tezlashtiriladi (ffmpeg `atempo`); javob bermagan yoki tarjima o'rniga izoh aytgan bo'lak qayta yuboriladi;
+- boshida va seek'dan keyin video ~3 s oldinga tarjima tayyor bo'lguncha qisqa pauzada turadi (buferlash);
+  tarjima 2 s dan ko'p orqada qolsa video bir zum to'xtaydi, tarjima ovozi esa yetib oladi;
+- **pauza** → tarjima ovozi ham to'xtaydi; reklama paytida tarjima qilinmaydi; tab yopilsa tarjima to'xtaydi;
+- video allaqachon ochiq tabda bo'lsa yangi tab ochilmaydi; JS aynan shu tabda bajariladi (Chrome tab `id`).
+
+O'lchovlar (TED, 90 s + pauza + seek): bitta sessiya bilan kechikish 9–30 s va mazmunning ~yarmi tushib
+qolardi; hozir o'rtacha sinxron farq ~0.7 s (max ~3 s), bo'laklar tushib qolmaydi, boshlanish ~5 s,
+seek'dan keyin ~3 s.
+
+Talablar: `brew install yt-dlp ffmpeg`; Chrome'da *View → Developer → Allow JavaScript from Apple Events*.
+Sozlamalar: `VIDEO_TRANSLATE_SESSIONS` (5; kvota kamroq sessiyaga ruxsat bersa — borlari bilan ishlaydi,
+qolganlari 45 s dan keyin qayta urinadi), `VIDEO_TRANSLATE_MODEL` (bo'sh = `GEMINI_MODEL`), `VIDEO_TRANSLATE_MODE=prompt|native`.
+Diqqat: tarjima Gemini kvotasini tez sarflaydi (bir vaqtda 5 sessiya).
 
 **Fayl va Excel (file_actions):**
 
@@ -255,9 +278,9 @@ Model "foydalanuvchi rozi bo'ldi" deb aytishiga ishonilmaydi — tasdiq faqat fo
 
 **Wake (`nexus/wake.py`)** — gap yordamchiga qaratilganmi?
 
-* `always` — har gapga javob beradi (standart).
-* `name` — faqat ism (`WAKE_NAME`, standart "Nexus") aytilganda; ism aytilgach `WAKE_FOLLOW_UP_S`
-  (25 s) davomida ismsiz davom etish mumkin.
+* `name` — **standart**: faqat ism (`WAKE_NAME`, standart "Nexus") aytilganda; ism aytilgach
+  `WAKE_FOLLOW_UP_S` (8 s) davomida ismsiz davom etish mumkin. Xonada boshqalar gapirsa ham chalg'imaydi.
+* `always` — har qanday ovozga javob beradi.
 * `smart` — ism, follow-up oynasi yoki buyruqqa o'xshash qisqa gap.
 
 Ism nutqda buziladi ("neksus", "нексус") — solishtirish Levenshtein masofasi bilan, tinish belgilari

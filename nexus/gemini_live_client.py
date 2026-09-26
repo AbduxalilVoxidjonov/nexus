@@ -173,8 +173,8 @@ class GeminiLiveClient:
         # Wake va diktovka
         self.wake = WakeState(
             name=str(getattr(settings, "wake_name", "Nexus") or ""),
-            mode=str(getattr(settings, "wake_mode", "always") or "always"),
-            follow_up_s=float(getattr(settings, "wake_follow_up_s", 25.0) or 25.0),
+            mode=str(getattr(settings, "wake_mode", "name") or "name"),
+            follow_up_s=float(getattr(settings, "wake_follow_up_s", 8.0) or 8.0),
         )
         self.dictation = DictationState()
         self._addressed = True  # joriy navbat yordamchiga qaratilganmi
@@ -457,7 +457,12 @@ class GeminiLiveClient:
                     await session.send_realtime_input(audio=types.Blob(data=bytes(item), mime_type=mime))
                     sent += 1
                     if sent % 250 == 0:  # ~5 s
-                        self._publish_metrics(audio_dropped=int(getattr(self.audio, "dropped", 0) or 0))
+                        player = getattr(self.audio, "player", None)
+                        self._publish_metrics(
+                            audio_dropped=int(getattr(self.audio, "dropped", 0) or 0),
+                            playback_underruns=int(getattr(player, "underruns", 0) or 0),
+                            playback_xruns=int(getattr(player, "xruns", 0) or 0),
+                        )
                 elif item == "activity_start":
                     if self._vad_disabled:
                         await session.send_realtime_input(activity_start=types.ActivityStart())

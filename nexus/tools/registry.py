@@ -56,7 +56,13 @@ MAX_OUTPUT = 4000
 # Har doim tasdiq talab qiladigan toollar (qaytarib bo'lmaydigan amallar)
 REQUIRES_CONFIRMATION = frozenset({"empty_trash", "delete_file", "sleep_display"})
 # Ixtiyoriy kengaytma modullari: TOOL_DECLARATIONS + HANDLERS eksport qiladi
-EXTENSION_MODULES: list[str] = ["nexus.file_actions", "nexus.ax_actions", "nexus.web_answer", "nexus.screen_reader"]
+EXTENSION_MODULES: list[str] = [
+    "nexus.file_actions",
+    "nexus.ax_actions",
+    "nexus.web_answer",
+    "nexus.screen_reader",
+    "nexus.video_translate",
+]
 # Enter bosilganda terminaldagi qatorni bajaradigan klavishlar
 _ENTER_KEYS = frozenset({"enter", "return"})
 

@@ -679,6 +679,7 @@ def test_registry_extension_modules_default_list() -> None:
         "nexus.ax_actions",
         "nexus.web_answer",
         "nexus.screen_reader",
+        "nexus.video_translate",
     ]
     assert reg.REQUIRES_CONFIRMATION >= {"empty_trash", "delete_file", "sleep_display"}
 
