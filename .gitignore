@@ -14,3 +14,8 @@ reference/AI/
 .DS_Store
 *.app
 *.zip
+
+# graphify: qayta yaratiladigan kesh va snapshotlar
+graphify-out/cache/
+graphify-out/20*/
+graphify-out/.graphify_python
