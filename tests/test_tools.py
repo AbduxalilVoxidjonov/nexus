@@ -543,6 +543,8 @@ async def test_registry_dispatches_and_publishes(monkeypatch: pytest.MonkeyPatch
     res = await r.execute("set_volume", {"level": "42"})
     assert res["ok"] and rec.scripts == ["set volume output volume 42"]
     ev = q.get_nowait()
+    while ev["type"] == "SETTINGS":  # registry o'z sozlamasini (require_confirmation) nashr qiladi
+        ev = q.get_nowait()
     assert ev["type"] == "TOOL_CALLED"
     assert ev["data"]["name"] == "set_volume" and ev["data"]["ok"] is True
 

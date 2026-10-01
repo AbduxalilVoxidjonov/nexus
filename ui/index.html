@@ -35,6 +35,13 @@
 
       <div class="nx-settings" id="settingsPanel" hidden>
         <div class="head">SOZLAMALAR</div>
+        <div class="row col" id="apiKeyRow">
+          <div class="lbl">Gemini API kaliti<span class="sub" id="setKeySub">aistudio.google.com/apikey</span></div>
+          <form class="nx-keyform" id="keyForm" autocomplete="off">
+            <input type="password" class="nx-nameinput nx-keyinput" id="setKey" placeholder="AIza…" maxlength="200" autocomplete="off" spellcheck="false" aria-label="Gemini API kaliti">
+            <button type="submit" class="nx-minibtn" id="setKeySave">Saqlash</button>
+          </form>
+        </div>
         <div class="row">
           <div class="lbl">Yordamchi ismi<span class="sub">"Hey {ism}" uyg'otish so'zi</span></div>
           <input type="text" class="nx-nameinput" id="setName" placeholder="Nexus" maxlength="24" autocomplete="off">
@@ -58,6 +65,14 @@
         <div class="row">
           <div class="lbl">Suhbat rejimi<span class="sub" id="setConvSub">ismsiz erkin suhbat · "kel gaplashamiz"</span></div>
           <button type="button" class="nx-toggle" id="setConv" aria-label="Suhbat rejimi"></button>
+        </div>
+        <div class="row">
+          <div class="lbl">Gapni bo'lish<span class="sub" id="setInterruptSub">o'chiq · buyruq oxirigacha bajariladi</span></div>
+          <button type="button" class="nx-toggle" id="setInterrupt" aria-label="Gapni bo'lish"></button>
+        </div>
+        <div class="row">
+          <div class="lbl">Tasdiq so'rash<span class="sub" id="setConfirmSub">o'chiq · buyruq darhol bajariladi</span></div>
+          <button type="button" class="nx-toggle" id="setConfirm" aria-label="Tasdiq so'rash"></button>
         </div>
         <div class="row col">
           <div class="lbl">Sezgirlik<span class="sub">mikrofon VAD bo'sag'asi</span></div>

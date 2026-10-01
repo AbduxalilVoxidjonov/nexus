@@ -316,8 +316,9 @@ def test_config_placeholder_api_key_is_empty(monkeypatch: pytest.MonkeyPatch) ->
     assert Settings().gemini_api_key == "AIzaSyRealLookingKey123"
 
 
-def test_start_command_rejects_placeholder_key(tmp_path: Path) -> None:
-    """start.command: bo'sh/namunaviy GEMINI_API_KEY → aniq xabar, exit 1; haqiqiy kalit → o'tadi."""
+def test_start_command_warns_on_placeholder_key(tmp_path: Path) -> None:
+    """start.command: bo'sh/namunaviy GEMINI_API_KEY → Sozlamalarga yo'naltiruvchi ogohlantirish, lekin
+    ishga tushish davom etadi (kalit ilovada kiritiladi); haqiqiy kalit → ogohlantirishsiz."""
     import shutil
     import subprocess
 
@@ -339,11 +340,12 @@ def test_start_command_rejects_placeholder_key(tmp_path: Path) -> None:
     ):
         (tmp_path / ".env").write_text(f"GEMINI_API_KEY={value}\n", encoding="utf-8")
         proc = subprocess.run([zsh, "-c", snippet], capture_output=True, text=True, timeout=10, check=False)
+        assert proc.returncode == 0 and "PASSED" in proc.stdout, (value, proc.stdout, proc.stderr)
         if ok:
-            assert proc.returncode == 0 and "PASSED" in proc.stdout, proc.stdout + proc.stderr
+            assert "DIQQAT" not in proc.stdout, proc.stdout
         else:
-            assert proc.returncode == 1 and "PASSED" not in proc.stdout, (value, proc.stdout, proc.stderr)
-            assert "GEMINI_API_KEY" in proc.stdout and "aistudio.google.com" in proc.stdout
+            assert "GEMINI_API_KEY" in proc.stdout and "Sozlamalar" in proc.stdout, (value, proc.stdout)
+            assert "aistudio.google.com" in proc.stdout
 
 
 # ---------------------------------------------------------------------------

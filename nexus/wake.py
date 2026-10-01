@@ -23,6 +23,10 @@ hisoblanadi; jimlik yoki "bo'ldi, rahmat" / "suhbatni tugat" rejimni tugatadi.
 Bu vaqtda xonadagi boshqa ovozlarga ham javob berilishi mumkin — shuning uchun
 rejim faqat aniq iboralar bilan yoqiladi. `touch()` oynani yangilaydi (muvaffaqiyatli
 navbat / tool bajarilganda).
+
+Rad javobi (`is_dismissal`): yordamchi ish tugagach "Yana nima qilay?" deb so'raydi; foydalanuvchi
+"yo'q, hozircha hech narsa" / "kerak emas" / "rahmat" desa — javob berilmaydi va oyna yopiladi,
+yordamchi yana ism bilan chaqirilguncha jim kutadi.
 """
 from __future__ import annotations
 
@@ -39,6 +43,8 @@ MODES = (ALWAYS, NAME, SMART)
 
 DEFAULT_CONVERSATION_IDLE_S = 45.0
 DEFAULT_FOLLOW_UP_S = 8.0  # qisqa: oynada ismsiz har qanday ovozga (boshqa odamlarnikiga ham) javob beriladi
+# Yordamchi savol bergan bo'lsa ("Labbay, sizni eshitaman", "Yana nima qilay?") — javob o'ylash uchun uzunroq oyna
+DEFAULT_QUESTION_FOLLOW_UP_S = 15.0
 
 _PUNCTUATION = re.compile(r"[^\w\s]", re.UNICODE)
 _APOSTROPHES = ("'", "`", "ʻ", "ʼ", "’", "‘")
@@ -78,6 +84,27 @@ _CONVERSATION_STOP = (
     "boldi rahmat", "rahmat boldi", "boldi yetarli", "xayr", "hayr",
     "xvatit", "poka", "stop talking", "that s all", "thats all", "bye",
 )
+
+
+# Rad javobi: to'ldiruvchi so'zlar (olib tashlanadi) va "hech narsa kerak emas" lug'ati.
+# Normallashtirilgan (apostrofsiz, kirill → lotin) shaklda: yo'q → yoq, нет → net, ничего → nichego.
+_DISMISS_FILLER = frozenset({
+    "hozircha", "hozir", "boshqa", "endi", "ham", "ok", "okay", "xop", "xoʻp", "mayli", "rahmat", "raxmat",
+    "katta", "juda", "sizga", "sanga", "tashakkur", "spasibo", "poka", "bolshoe", "thanks", "thank", "you",
+    "for", "now", "right", "hm", "hmm", "eh", "e", "a", "unaqa", "unda",
+})
+_DISMISS_CORE = frozenset({
+    "yoq", "yo", "hech", "narsa", "nima", "narsani", "kerak", "kerakmas", "emas", "shart", "boldi", "yetarli",
+    "hammasi", "joyida", "qilma", "qilmang", "qilmay", "tur", "turing",
+    "net", "nichego", "ne", "nado", "nuzhno", "vsyo", "vse",
+    "no", "nothing", "not", "all", "thats", "that", "s", "is", "need", "needed", "i", "dont", "don", "t",
+})
+_DISMISS_NEGATION = frozenset({
+    "yoq", "hech", "emas", "kerakmas", "boldi", "yetarli", "qilma", "qilmang", "net", "nichego", "ne",
+    "no", "nothing", "not", "dont",
+})
+_DISMISS_THANKS = frozenset({"rahmat", "raxmat", "tashakkur", "spasibo", "thanks", "thank"})
+_DISMISS_MAX_WORDS = 7
 
 
 def normalise(text: str) -> str:
@@ -170,6 +197,20 @@ def strip_name(text: str, name: str) -> str:
     return out.strip()
 
 
+def is_dismissal(text: str, name: str = "") -> bool:
+    """"Yo'q, hozircha hech narsa", "kerak emas", "rahmat", "нет, ничего", "no, nothing" — foydalanuvchi
+    hech narsa so'ramayapti. Qisqa gap bo'lishi va faqat rad/minnatdorchilik so'zlaridan iborat bo'lishi
+    kerak ("yo'q, Chrome'ni och" — rad emas, buyruq). Ism (bo'lsa) hisobga olinmaydi."""
+    body = strip_name(text, name) if name else text
+    words = normalise(body).split()
+    if not words or len(words) > _DISMISS_MAX_WORDS:
+        return False
+    core = [w for w in words if w not in _DISMISS_FILLER]
+    if not core:
+        return any(w in _DISMISS_THANKS for w in words)  # faqat "rahmat" / "spasibo"
+    return all(w in _DISMISS_CORE for w in core) and any(w in _DISMISS_NEGATION for w in core)
+
+
 def looks_like_command(text: str) -> bool:
     """SMART rejimi uchun evristika: qisqa gap + buyruq so'zi."""
     norm = normalise(text)
@@ -189,7 +230,9 @@ class WakeState:
     follow_up_s: float = DEFAULT_FOLLOW_UP_S
     conversation_idle_s: float = DEFAULT_CONVERSATION_IDLE_S
     conversation: bool = False  # suhbat rejimi ("kel gaplashamiz")
+    question_follow_up_s: float = DEFAULT_QUESTION_FOLLOW_UP_S
     _called_at: float = field(default=0.0, repr=False)
+    _asked: bool = field(default=False, repr=False)  # oxirgi javob savol bilan tugagan
 
     def __post_init__(self) -> None:
         self.set_mode(self.mode)
@@ -207,10 +250,28 @@ class WakeState:
     @property
     def engaged(self) -> bool:
         """Oxirgi chaqiruvdan keyingi oyna (follow-up yoki suhbat) hali ochiqmi?"""
+        return self.engaged_at(None)
+
+    def engaged_at(self, at: float | None) -> bool:
+        """Oyna `at` (monotonic; odatda gap BOSHLANGAN payt) da ochiq edimi? None — hozir.
+
+        Gap boshlanishi bo'yicha tekshiriladi: transkript gap tugagach keladi — oyna oxirida boshlangan
+        gap matni kelguncha oyna yopilib, buyruq e'tiborsiz qolmasin."""
         if not self._called_at:
             return False
-        window = self.conversation_idle_s if self.conversation else self.follow_up_s
-        return (time.monotonic() - self._called_at) < window
+        if self.conversation:
+            window = self.conversation_idle_s
+        elif self._asked:
+            window = max(self.follow_up_s, self.question_follow_up_s)
+        else:
+            window = self.follow_up_s
+        now = time.monotonic()
+        t = now if at is None else min(at, now)
+        return (t - self._called_at) < window
+
+    def expect_answer(self, asked: bool) -> None:
+        """Yordamchi javobi savol bilan tugadimi — keyingi oyna uzunroq bo'ladi."""
+        self._asked = bool(asked)
 
     def start_conversation(self) -> None:
         self.conversation = True
@@ -242,10 +303,20 @@ class WakeState:
 
     def release(self) -> None:
         self._called_at = 0.0
+        self._asked = False
 
-    def should_act(self, text: str) -> bool:
-        """Bu gapga javob berish kerakmi? (ism eshitilsa oynani ham ochadi)."""
-        if self.conversation and self.engaged:
+    def extend_to(self, ts: float) -> None:
+        """Oyna ochiq bo'lsa, uni `ts` (monotonic) dan boshlab hisoblaydi — masalan yordamchi ovozi tugagan
+        paytdan: uzun javob ijro etilayotganda follow-up oynasi tugab qolmasin."""
+        if self._called_at and ts > self._called_at:
+            self._called_at = ts
+
+    def is_dismissal(self, text: str) -> bool:
+        return is_dismissal(text, self.name)
+
+    def should_act(self, text: str, at: float | None = None) -> bool:
+        """Bu gapga javob berish kerakmi? (ism eshitilsa oynani ham ochadi). `at` — gap boshlangan payt."""
+        if self.conversation and self.engaged_at(at):
             if text.strip():
                 self._called_at = time.monotonic()  # gapirilyapti — suhbat davom etadi
             return True
@@ -253,7 +324,7 @@ class WakeState:
             return True
         if self.heard(text):
             return True
-        if self.engaged:
+        if self.engaged_at(at):
             return True
         if self.mode == SMART:
             return looks_like_command(text)

@@ -70,12 +70,14 @@ cp .env.example .env        # so'ng GEMINI_API_KEY ni yozing
 
 | O'zgaruvchi | Standart | Izoh |
 |---|---|---|
-| `GEMINI_API_KEY` | — | majburiy |
+| `GEMINI_API_KEY` | — | majburiy; ilovada Sozlamalar (⚙) → Gemini API kaliti orqali ham kiritiladi va `.env` ga saqlanadi |
 | `GEMINI_MODEL` | `gemini-2.5-flash-native-audio-preview-09-2025` | Live (native audio) modeli |
 | `GEMINI_VOICE` | `Aoede` | 30 ta ovozdan biri (`scripts/voice_picker.py` bilan tanlang) |
 | `INPUT_DEVICE` | bo'sh | mikrofon nomi yoki indeksi |
 | `VAD_THRESHOLD` | `0.02` | lokal RMS bo'sag'asi (UI'dagi sezgirlik slayderi shuni boshqaradi) |
 | `ECHO_GUARD` / `ECHO_BARGE_FACTOR` | `true` / `3.0` | yordamchi gapirayotganda mikrofonni bostirish; barge-in bo'sag'asi |
+| `ALLOW_INTERRUPT` | `false` | `false` — bitta buyruq oxirigacha: bajarilib javob tugaguncha mikrofon bostiriladi (navbatga tushmaydi), keyin "Yana nima qilay?"; "yo'q, hech narsa" — ism bilan chaqirilguncha jim; UI: "Gapni bo'lish" |
+| `REQUIRE_CONFIRMATION` | `false` | xavfli amallardan oldin tasdiq; `false` — buyruq darhol bajariladi (tashqi matn o'qilgan navbatda baribir so'raladi); UI: "Tasdiq so'rash" |
 | `PLAYBACK_PREBUFFER_MS` | `220` | ijrodan oldingi jitter-bufer |
 | `VAD_START_SENSITIVITY` / `VAD_END_SENSITIVITY` | `LOW` / `HIGH` | Gemini server-VAD (HIGH start — o'z ovozini eshitib qoladi) |
 | `TRANSCRIPTION_LANGUAGES` | `uz-UZ,ru-RU,en-US` | kiruvchi transkripsiya tillari |

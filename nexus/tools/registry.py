@@ -4,6 +4,11 @@
 dinamik: terminal qo'riqchisi, sezgir/mavjud fayl, terminalga terish) → ConfirmationGate →
 handler → (handler `needs_confirmation` qaytarsa → gate → qayta chaqirish) → taint belgilash.
 
+`require_confirmation=False` (ilovadagi standart): foydalanuvchi buyrug'i tasdiqsiz bajariladi
+(handlerga `confirmed=True` beriladi). Faqat taint sababi (shu navbatda tashqi matn o'qilgan —
+prompt injection) bo'lsa — tasdiq sababi bor har qanday amal baribir so'raladi. `deny`
+(taqiqlangan terminal buyruqlari) o'zgarmaydi.
+
 `execute` natijasi: {"ok": bool, "output": str, "duration_ms": int, "error": str|None}
    (+ ixtiyoriy "note"/"next_step" — handler dict qaytarsa)
 
@@ -104,6 +109,10 @@ class ToolRegistry:
             getattr(settings, "confirm_ttl_s", DEFAULT_CONFIRM_TTL) or DEFAULT_CONFIRM_TTL
         )
         self.gate = ConfirmationGate(bus, ttl_s=self.confirm_ttl)
+        # settings berilmasa (testlar, eski chaqiruvlar) — xavfsiz standart: tasdiq so'raladi
+        self.require_confirmation: bool = (
+            True if settings is None else bool(getattr(settings, "require_confirmation", True))
+        )
         self.taint = TaintTracker()
         self.loop_guard = LoopGuard()
         self._running: set[asyncio.Task] = set()
@@ -125,6 +134,8 @@ class ToolRegistry:
             bus.register_command("kill_all", self._cmd_kill_all)
             bus.register_command("new_turn", self._cmd_new_turn)
             bus.register_command("utterance", self._cmd_utterance)
+            bus.register_command("confirmations", self._cmd_confirmations)
+            self.publish_settings()
 
     # ------------------------------------------------------------------
     # Kengaytma modullari
@@ -260,20 +271,29 @@ class ToolRegistry:
         if looping is not None:
             return {"ok": False, "output": "", "error": looping}
 
+        # Tasdiq o'chiq bo'lsa ham: shu navbatda tashqi matn o'qilgan bo'lsa (prompt injection ehtimoli)
+        # odatda tasdiq talab qiladigan har qanday amal (savat, o'chirish, terminal...) so'raladi
+        tainted = self.taint.tainted
         reasons = await self._confirmation_reasons(name, clean)
         if reasons:
-            approved = await self._ask(name, clean, reasons)
-            if not approved:
-                return self._not_confirmed(name)
+            if self.require_confirmation or tainted:
+                approved = await self._ask(name, clean, reasons)
+                if not approved:
+                    return self._not_confirmed(name)
+            else:
+                log.info("Tasdiqsiz bajarilmoqda (%s): %s", name, "; ".join(reasons))
             clean["confirmed"] = True
 
         result = await self._run_handler(name, handler, clean)
 
         if result.get("needs_confirmation") and not clean.get("confirmed"):
             summary = str(result.get("summary") or result.get("output") or name)
-            approved = await self._ask(name, clean, [summary], summary=summary)
-            if not approved:
-                return self._not_confirmed(name)
+            if self.require_confirmation or tainted:
+                approved = await self._ask(name, clean, [summary], summary=summary)
+                if not approved:
+                    return self._not_confirmed(name)
+            else:
+                log.info("Tasdiqsiz bajarilmoqda (%s): %s", name, summary)
             clean["confirmed"] = True
             result = await self._run_handler(name, handler, clean)
 
@@ -367,6 +387,26 @@ class ToolRegistry:
             if keys & _ENTER_KEYS and await self.mac.is_terminal_frontmost():
                 reasons.append("terminalda Enter — joriy qator bajariladi")
         return reasons
+
+    def set_require_confirmation(self, value: bool) -> bool:
+        self.require_confirmation = bool(value)
+        if self.settings is not None:
+            try:
+                self.settings.require_confirmation = self.require_confirmation
+            except AttributeError:
+                pass
+        self.publish_settings()
+        return self.require_confirmation
+
+    def publish_settings(self) -> None:
+        if self.bus is None:
+            return
+        data = dict(self.bus.snapshot.get("SETTINGS") or {})
+        data["require_confirmation"] = self.require_confirmation
+        self.bus.publish("SETTINGS", data)
+
+    async def _cmd_confirmations(self, msg: dict[str, Any]) -> dict[str, Any]:
+        return {"require_confirmation": self.set_require_confirmation(bool(msg.get("value", True)))}
 
     async def _ask(self, name: str, args: dict, reasons: list[str], summary: str | None = None) -> bool:
         summary = summary or self._summarize(name, args)

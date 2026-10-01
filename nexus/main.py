@@ -17,6 +17,7 @@ import logging
 import signal
 import sys
 import time
+from pathlib import Path
 from typing import Any
 
 from nexus import __version__
@@ -126,11 +127,28 @@ def _first(info: dict[str, Any], *keys: str) -> Any:
     return None
 
 
-def setup_logging(level: str) -> None:
+LOG_FILE = Path("~/.nexus/logs/nexus.log").expanduser()
+
+
+def setup_logging(level: str, log_file: Path | None = LOG_FILE) -> None:
+    """Konsol + aylanma log fayl (`~/.nexus/logs/nexus.log`, 2 MB × 3) — .app'da ham muammoni ko'rish uchun."""
+    fmt = "%(asctime)s %(levelname)-5s %(name)s: %(message)s"
+    handlers: list[logging.Handler] = [logging.StreamHandler()]
+    if log_file is not None:
+        try:
+            from logging.handlers import RotatingFileHandler
+
+            log_file.parent.mkdir(parents=True, exist_ok=True)
+            fh = RotatingFileHandler(log_file, maxBytes=2_000_000, backupCount=3, encoding="utf-8")
+            fh.setFormatter(logging.Formatter(fmt, datefmt="%Y-%m-%d %H:%M:%S"))
+            handlers.append(fh)
+        except OSError as e:  # log fayl bo'lmasa ham ishlayveramiz
+            print(f"Log fayl ochilmadi ({log_file}): {e}", file=sys.stderr)
     logging.basicConfig(
         level=getattr(logging, level.upper(), logging.INFO),
-        format="%(asctime)s %(levelname)-5s %(name)s: %(message)s",
+        format=fmt,
         datefmt="%H:%M:%S",
+        handlers=handlers,
     )
     for noisy in ("websockets", "httpx", "httpcore", "uvicorn.access", "google_genai"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
@@ -157,7 +175,10 @@ async def check_environment(settings: Settings) -> int:
     if settings.gemini_api_key.strip():
         print("[OK]  GEMINI_API_KEY topildi")
     else:
-        print("[XATO] GEMINI_API_KEY bo'sh yoki namunaviy (your_api_key_here) — .env fayliga haqiqiy kalitni yozing")
+        print(
+            "[XATO] GEMINI_API_KEY bo'sh yoki namunaviy (your_api_key_here) — ilovada Sozlamalar (⚙) → "
+            "Gemini API kaliti orqali kiriting yoki .env fayliga yozing"
+        )
         problems += 1
     print(f"[..]  Model: {settings.gemini_model}")
 
@@ -277,7 +298,7 @@ async def run(
     try:
         from nexus.tools.registry import ToolRegistry
 
-        registry = ToolRegistry(bus)
+        registry = ToolRegistry(bus, settings)
     except Exception as e:  # noqa: BLE001
         log.error("ToolRegistry yuklanmadi (toolsiz rejim): %s", e)
     _register_state_commands(bus, registry)
@@ -307,7 +328,12 @@ async def run(
 
     print_banner(settings, audio.current_device_name(), ui_server is not None)
 
-    gemini = GeminiLiveClient(bus, settings, registry, audio)
+    from nexus.config import save_api_key
+
+    # UI bo'lsa kalit yo'qligi xato emas — Sozlamalardan kiritilguncha kutiladi (va `.env` ga saqlanadi)
+    gemini = GeminiLiveClient(
+        bus, settings, registry, audio, wait_for_key=ui_server is not None, key_saver=save_api_key
+    )
     ticker = MetricsTicker(bus, interval=2.0, gemini=gemini)
 
     tasks: list[asyncio.Task] = [

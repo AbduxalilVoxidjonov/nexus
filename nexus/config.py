@@ -7,6 +7,7 @@ Shuning uchun `settings` singleton'i ham, keyin qurilgan `Settings()` ham bir xi
 from __future__ import annotations
 
 import os
+import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -91,6 +92,105 @@ def is_placeholder_api_key(value: str | None) -> bool:
     return not v or v in API_KEY_PLACEHOLDERS or v.startswith(("your_", "sizning_"))
 
 
+# API kalit belgilari: Google kalitlari (AIza...) harf/raqam, `-`, `_`; boshqa formatlar uchun `.`, `~`, `+`,
+# `/`, `=` ham ruxsat. `#`, `$`, qo'shtirnoq, `\\`, bo'shliq va yangi qator YO'Q — `.env` ga qator/izoh qo'shib bo'lmasin.
+_API_KEY_RE = re.compile(r"^[A-Za-z0-9._~+/=\-]{20,300}$")
+_ENV_KEY_LINE = re.compile(r"^[ \t]*(export[ \t]+)?GEMINI_API_KEY[ \t]*=", re.MULTILINE)
+# Nusxa olishda qo'shilib qoladigan ko'rinmas belgilar (zero-width, BOM, NBSP, yo'nalish belgilari)
+_INVISIBLE = dict.fromkeys(map(ord, "\u200b\u200c\u200d\u2060\ufeff\u00a0\u202f\u200e\u200f\u202a\u202c"), None)
+_QUOTES = "\"'`“”„‘’‚«»"
+_KEY_PREFIX = re.compile(r"^(export\s+)?(GEMINI_API_KEY|GOOGLE_API_KEY|API_KEY)\s*[=:]\s*", re.IGNORECASE)
+
+
+def _describe_char(c: str) -> str:
+    if c in "\r\n":
+        return "yangi qator"
+    if c.isspace():
+        return "bo'sh joy"
+    if c in _QUOTES:
+        return f"qo'shtirnoq ({c})"
+    return f"'{c}'" if c.isprintable() and ord(c) < 128 else f"maxsus belgi U+{ord(c):04X}"
+
+
+def validate_api_key(value: str | None) -> str:
+    """UI dan kiritilgan kalitni tozalaydi va tekshiradi; yaroqsiz bo'lsa `ValueError`.
+
+    Nusxa olishda qo'shilgan narsalar avtomatik olib tashlanadi: ko'rinmas belgilar, chetdagi bo'shliq va
+    qo'shtirnoqlar, `GEMINI_API_KEY=` prefiksi. Xato xabarida kalitning o'zi ko'rsatilmaydi."""
+    v = (value or "").translate(_INVISIBLE).strip()
+    v = _KEY_PREFIX.sub("", v).strip().strip(_QUOTES).strip()
+    if is_placeholder_api_key(v):
+        raise ValueError("API kalit bo'sh yoki namunaviy qiymat")
+    if not _API_KEY_RE.match(v):
+        bad = next((i for i, c in enumerate(v) if not _API_KEY_RE.match("a" * 20 + c)), None)
+        if bad is not None:
+            raise ValueError(
+                f"API kalitda ruxsat etilmagan belgi bor: {_describe_char(v[bad])}, {bad + 1}-o'rinda "
+                f"(jami {len(v)} belgi). Kalitni aistudio.google.com/apikey dan qayta nusxa oling"
+            )
+        raise ValueError(f"API kalit juda {'qisqa' if len(v) < 20 else 'uzun'} ({len(v)} belgi) — to'liq nusxa olinganini tekshiring")
+    return v
+
+
+def api_key_hint(key: str | None) -> str:
+    """UI uchun niqoblangan ko'rinish: `AIza…x1y2` (kalitning o'zi hech qachon UI ga yuborilmaydi)."""
+    k = (key or "").strip()
+    if not k:
+        return ""
+    return f"{k[:4]}…{k[-4:]}" if len(k) > 12 else "…" + k[-2:]
+
+
+def api_key_env_path() -> Path:
+    """UI dan kiritilgan kalit yoziladigan `.env`.
+
+    `.env` fayllari `override=False` bilan yuklanadi — birinchi aniqlangan qiymat yutadi. Shuning uchun
+    kalit `~/.nexus/.env` dan ustun turgan (cwd/loyiha) faylda allaqachon yozilgan bo'lsa (namunaviy
+    qiymat bo'lsa ham) — o'sha faylni yangilaymiz, aks holda keyingi ishga tushishda eski qiymat yutadi.
+    Boshqa hollarda — `~/.nexus/.env` (.app bundle ichidagi fayl o'zgartirilmaydi)."""
+    home = Path("~/.nexus/.env").expanduser()
+    for path in env_candidates():
+        if path == home:
+            break
+        try:
+            if path.is_file() and os.access(path, os.W_OK) and _ENV_KEY_LINE.search(path.read_text(encoding="utf-8")):
+                return path
+        except (OSError, UnicodeDecodeError):
+            continue
+    return home
+
+
+def save_api_key(key: str, path: Path | None = None) -> Path:
+    """`GEMINI_API_KEY=` qatorini `.env` da yangilaydi (bo'lmasa qo'shadi), faylni 0600 qiladi va
+    joriy jarayon muhitini ham yangilaydi. Yozilgan fayl yo'lini qaytaradi."""
+    key = validate_api_key(key)
+    target = path or api_key_env_path()
+    target.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        text = target.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        text = ""
+    line = f"GEMINI_API_KEY={key}"
+    out: list[str] = []
+    replaced = False
+    for ln in text.splitlines():
+        if _ENV_KEY_LINE.match(ln):
+            if not replaced:
+                out.append(line)
+                replaced = True
+            continue  # takroriy qatorlar olib tashlanadi
+        out.append(ln)
+    if not replaced:
+        out.append(line)
+    tmp = target.with_name(target.name + ".tmp")
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        fh.write("\n".join(out) + "\n")
+    os.replace(tmp, target)
+    os.chmod(target, 0o600)
+    os.environ["GEMINI_API_KEY"] = key
+    return target
+
+
 def _env_int(name: str, default: int) -> int:
     try:
         return int(os.getenv(name, default))
@@ -147,6 +247,10 @@ class Settings:
     vad_threshold: float = field(default_factory=lambda: _env_float("VAD_THRESHOLD", 0.02))
     # Yordamchi gapirayotganda mikrofon chunklarini bostirish (o'z ovozini eshitmasin)
     echo_guard: bool = field(default_factory=lambda: _env_bool("ECHO_GUARD", True))
+    # Javob paytida gapirsa yordamchi to'xtasinmi (barge-in). False (standart) — bitta buyruq oxirigacha:
+    # buyruq bajarilib javob aytilguncha mikrofon to'liq bostiriladi (bu vaqtdagi gap navbatga ham tushmaydi),
+    # server ham javobni uzmaydi (NO_INTERRUPTION); tugagach yordamchi "Yana nima qilay?" deb so'raydi.
+    allow_interrupt: bool = field(default_factory=lambda: _env_bool("ALLOW_INTERRUPT", False))
     # Ijro paytida foydalanuvchi gapirsa (barge-in) — RMS bo'sag'aning necha barobaridan oshsa o'tkaziladi
     echo_barge_factor: float = field(default_factory=lambda: _env_float("ECHO_BARGE_FACTOR", 3.0))
     # Barge-in ochilishi uchun uzluksiz baland ovoz davomiyligi (ms) — qisqa echo cho'qqisi javobni uzmasin
@@ -189,6 +293,10 @@ class Settings:
 
     # Xavfsizlik
     allow_terminal: bool = field(default_factory=lambda: _env_bool("ALLOW_TERMINAL", True))
+    # Xavfli amallar (savatni tozalash, faylni o'chirish/ustiga yozish, terminal) oldidan tasdiq so'ralsinmi.
+    # False (standart) — buyruq aytilishi bilan bajariladi. Tashqi matn (veb/fayl/ekran) o'qilgan navbatdagi
+    # xavfli amal baribir tasdiq so'raydi — bu prompt injection himoyasi, foydalanuvchi buyrug'i emas.
+    require_confirmation: bool = field(default_factory=lambda: _env_bool("REQUIRE_CONFIRMATION", False))
     screenshot_dir: Path = field(
         default_factory=lambda: Path(os.getenv("SCREENSHOT_DIR", "~/Desktop")).expanduser()
     )

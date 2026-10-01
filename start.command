@@ -31,11 +31,7 @@ fi
 if [[ ! -f .env ]]; then
   if [[ -f .env.example ]]; then
     cp .env.example .env
-    echo "DIQQAT: .env yaratildi — GEMINI_API_KEY ni yozing (https://aistudio.google.com/apikey),"
-    echo "        so'ng start.command ni qayta ishga tushiring."
-    echo "        Fayl: $(pwd)/.env"
-    pause
-    exit 0
+    echo "DIQQAT: .env yaratildi: $(pwd)/.env"
   else
     echo "XATO: .env ham, .env.example ham topilmadi."
     pause
@@ -43,18 +39,16 @@ if [[ ! -f .env ]]; then
   fi
 fi
 
-# GEMINI_API_KEY: bo'sh yoki namunaviy (your_api_key_here, SIZNING_API_KEY, ...) bo'lsa — dastur ishga tushmaydi
+# GEMINI_API_KEY: bo'sh yoki namunaviy (your_api_key_here, SIZNING_API_KEY, ...) bo'lsa — ogohlantiramiz,
+# lekin dastur ishga tushadi: kalitni ilovadagi Sozlamalar (⚙) → "Gemini API kaliti" orqali kiritish mumkin
 api_key=$(grep -E '^[[:space:]]*(export[[:space:]]+)?GEMINI_API_KEY=' .env | tail -1 | sed -E 's/^[^=]*=//; s/^[[:space:]]+//; s/[[:space:]]+$//; s/^"(.*)"$/\1/; s/^'"'"'(.*)'"'"'$/\1/')
 key_lc=$(printf '%s' "$api_key" | tr '[:upper:]' '[:lower:]')
 case "$key_lc" in
   ""|your_api_key_here|sizning_api_key|sizning_api_kalitingiz|changeme|your_*|sizning_*)
-    echo "XATO: .env faylida GEMINI_API_KEY yo'q yoki namunaviy qiymat (\"${api_key:-bo'sh}\")."
-    echo "      Haqiqiy kalitni https://aistudio.google.com/apikey dan olib, .env fayliga yozing:"
-    echo "        GEMINI_API_KEY=AIza..."
-    echo "      Fayl: $(pwd)/.env"
-    echo "      Kalit yozilgach start.command ni qayta ishga tushiring."
-    pause
-    exit 1
+    echo "DIQQAT: GEMINI_API_KEY hali kiritilmagan (\"${api_key:-bo'sh}\")."
+    echo "        Ilova ochilgach: Sozlamalar (⚙) → Gemini API kaliti — kalitni kiriting va Saqlang."
+    echo "        Kalitni https://aistudio.google.com/apikey dan olasiz (yoki .env ga yozing: $(pwd)/.env)."
+    echo
     ;;
 esac
 

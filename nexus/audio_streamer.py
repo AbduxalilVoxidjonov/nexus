@@ -14,6 +14,15 @@ bo'sag'aning `echo_barge_factor` barobaridan `echo_barge_min_ms` davomida uzluks
 baland bo'lsa (foydalanuvchi gapiryapti) chunklar o'tkaziladi (barge-in saqlanadi,
 `BargeInGate`). Bitta echo cho'qqisi javobni uzib qo'ymaydi.
 
+"Bitta buyruq — oxirigacha" rejimi (`barge_in=False`, standart): buyruq qabul qilingandan
+javob ovozi tugaguncha (holat processing / tool_executing / speaking yoki o'z ijrosi) mikrofon
+to'liq sukunatga almashtiriladi — bu vaqtda aytilgan gap (o'z ovozi, xonadagi boshqa ovozlar,
+foydalanuvchining keyingi gapi) serverga yetmaydi va navbatga tushmaydi. Yordamchi ish tugagach
+"Yana nima qilay?" deb so'raydi — keyingi buyruq shundan keyin aytiladi. Istisnolar: tasdiq
+kutilayotganda ("ha" deyish), PTT tugmasi bosilganda va boshqa ijro manbai (video tarjimasi) —
+ularda odatdagi barge-in darvozasi ishlaydi. Holat `BUSY_HOLD_MAX_S` dan uzoq band qolsa
+(masalan, javob kelmay qolsa) mikrofon qayta ochiladi.
+
 Toza (side-effect'siz) funksiyalar — `compute_rms`, `should_forward`,
 `gate_open`, `echo_gate` — testlarda alohida tekshiriladi.
 """
@@ -101,9 +110,12 @@ def echo_gate(rms: float, threshold: float, playing: bool, guard: bool = True, f
 # Mikrofon navbatiga qo'yiladigan boshqaruv markerlari (PTT rejimida VAD o'chiq bo'lganda)
 MARK_ACTIVITY_START = "activity_start"
 MARK_ACTIVITY_END = "activity_end"
+STALL_ARM_S = 0.6  # prebuffer to'lmagan, lekin shuncha vaqt yangi audio kelmasa — borini ijro etamiz
 PLAYING_TAIL_S = 0.25  # oxirgi real chunk chiqqach (+ oqim latency'si) shuncha vaqt "ijro" deb hisoblanadi
 PREBUFFER_GROWTH = 1.5  # navbat o'rtasida bufer bo'shasa (underrun) prebuffer shuncha barobar oshadi
 PREBUFFER_MAX_MS = 600
+BUSY_STATES = ("processing", "tool_executing", "speaking")
+BUSY_HOLD_MAX_S = 45.0  # tool timeout (30 s) + model javobi; bundan uzoq band holatda mikrofon ochiladi
 
 
 def parse_latency(value: Any) -> str | float:
@@ -264,6 +276,7 @@ class AudioPlayer:
         self.underruns = 0  # javob o'rtasida bufer bo'shab qolgan holatlar
         self.xruns = 0  # PortAudio output_underflow (callback kechikdi)
         self.hold = False  # True — ijro to'xtab turadi (navbat saqlanadi), False — davom etadi
+        self._last_enqueue_ts = 0.0
 
     # --- hayot sikli ---
     def start(self) -> None:
@@ -312,6 +325,7 @@ class AudioPlayer:
             if self._final and not self._pending:
                 self._target = self._prebuffer_bytes  # yangi javob — boshlang'ich prebuffer
             self._final = False
+            self._last_enqueue_ts = time.monotonic()
             self._queue.append(bytes(data))
             self._pending += len(data)
             if not self._armed and self._pending >= self._target:
@@ -339,6 +353,12 @@ class AudioPlayer:
             self._last_out_ts = 0.0
         return n
 
+    @property
+    def last_output_ts(self) -> float:
+        """Oxirgi real audio chunk karnayga chiqqan payt (time.monotonic; 0 — hali yo'q)."""
+        with self._lock:
+            return self._last_out_ts
+
     def pending_bytes(self) -> int:
         with self._lock:
             return self._pending
@@ -363,6 +383,13 @@ class AudioPlayer:
         if status and getattr(status, "output_underflow", False):
             self.xruns += 1
         with self._lock:
+            if (
+                not self._armed and self._pending and not self.hold
+                and time.monotonic() - self._last_enqueue_ts > STALL_ARM_S
+            ):
+                # Qisqa javob prebufferni to'ldirmadi va generation_complete kelmadi (yoki kechikdi) —
+                # audio navbatda "osilib" qolmasin (u "gapiryapti" hisoblanib mikrofonni ham yopib turardi)
+                self._armed = True
             if self._armed and not self.hold:
                 if self._leftover:
                     buf += self._leftover
@@ -433,6 +460,10 @@ class AudioStreamer:
         self.upstream_paused: bool = False
         self.echo_guard: bool = bool(getattr(settings, "echo_guard", True))
         self.echo_barge_factor: float = float(getattr(settings, "echo_barge_factor", 3.0))
+        # False — yordamchi gapirayotganda mikrofon to'liq bostiriladi (javob oxirigacha eshitiladi)
+        self.barge_in: bool = bool(getattr(settings, "allow_interrupt", False))
+        self._busy_since = 0.0  # holat band (processing/tool/speaking) bo'lgan payt
+        self.speech_started_at = 0.0  # joriy gap boshlangan payt (RMS gate ochilgan, monotonic)
         self._barge = BargeInGate(
             self.chunk_ms,
             min_ms=int(getattr(settings, "echo_barge_min_ms", 160)),
@@ -532,6 +563,7 @@ class AudioStreamer:
             self._gate_last_open = now
             if not self.speaking:
                 self.speaking = True
+                self.speech_started_at = now
                 self._on_gate_change(True)
         elif self.speaking and now - self._gate_last_open > self._gate_hold_s:
             self.speaking = False
@@ -551,7 +583,17 @@ class AudioStreamer:
         loop, q = self._loop, self._queue
         if loop is None or q is None or loop.is_closed():
             return False
-        playing = self.echo_guard and (self.player.is_playing or self._extra_is_playing())
+        # Ijro o'chiq / oqim ochilmagan bo'lsa navbat hech qachon bo'shamaydi — bu "gapiryapti" emas
+        replying = self.player.enabled and self.player.is_playing
+        own_playing = self.echo_guard and self.player.is_playing
+        if self._busy(now, replying) and self._hold_during_reply():
+            # Bitta buyruq — oxirigacha: buyruq bajarilib, javob aytilguncha hech narsa o'tmaydi va
+            # navbatga tushmaydi (oqim uzluksiz — sukunat)
+            self._barge.reset()
+            self._echo_suppressed += 1
+            loop.call_soon_threadsafe(self._enqueue, b"\x00" * len(chunk))
+            return True
+        playing = own_playing or (self.echo_guard and self._extra_is_playing())
         loud = echo_gate(rms, self._threshold, playing, self.echo_guard, self.echo_barge_factor)
         # Yordamchi gapirayotganda: echo → sukunat (oqim uzluksiz), uzluksiz baland gap → barge-in
         out, suppressed = self._barge.process(chunk, loud, playing, now)
@@ -559,6 +601,25 @@ class AudioStreamer:
         for c in out:
             loop.call_soon_threadsafe(self._enqueue, c)
         return True
+
+    def _busy(self, now: float, replying: bool = False) -> bool:
+        """Yordamchi buyruq ustida ishlayaptimi (o'ylayapti / tool bajaryapti / gapiryapti)?
+
+        `BUSY_HOLD_MAX_S` dan uzoq davom etsa False — mikrofon hech qachon butunlay "kar" bo'lib qolmasin."""
+        if not replying and self.bus.state not in BUSY_STATES:
+            self._busy_since = 0.0
+            return False
+        if not self._busy_since:
+            self._busy_since = now
+        return now - self._busy_since < BUSY_HOLD_MAX_S
+
+    def _hold_during_reply(self) -> bool:
+        """Yordamchi javobi paytida mikrofon to'liq bostirilsinmi?"""
+        if self.barge_in:
+            return False
+        if self.ptt_mode and self.ptt_pressed:
+            return False  # PTT — foydalanuvchi aniq gapirmoqchi
+        return self.bus.state != "awaiting_confirmation"  # tasdiqqa "ha" deyish mumkin bo'lsin
 
     def _extra_is_playing(self) -> bool:
         fn = self.extra_playing

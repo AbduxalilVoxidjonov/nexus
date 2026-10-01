@@ -79,7 +79,8 @@
     state: "idle",
     conn: { gemini: "disconnected", attempt: 0, detail: "" },
     metrics: {},
-    settings: { muted: false, ptt: false, sensitivity: 0.68, playback: null, wake_mode: null, name: "Nexus", dictating: false, conversation: false },
+    settings: { muted: false, ptt: false, sensitivity: 0.68, playback: null, wake_mode: null, name: "Nexus", dictating: false, conversation: false, allow_interrupt: false, require_confirmation: false, api_key_set: null, api_key_hint: "" },
+    keyPrompted: false,
     confirm: null, confirmTimer: null,
     devices: [], currentDevice: null, devicesOpen: false,
     level: 0, levelAt: 0,
@@ -282,6 +283,11 @@
     if (typeof d.name === "string" && d.name.trim()) S.settings.name = d.name.trim();
     if (typeof d.dictating === "boolean") S.settings.dictating = d.dictating;
     if (typeof d.conversation === "boolean") S.settings.conversation = d.conversation;
+    if (typeof d.allow_interrupt === "boolean") S.settings.allow_interrupt = d.allow_interrupt;
+    if (typeof d.require_confirmation === "boolean") S.settings.require_confirmation = d.require_confirmation;
+    if (typeof d.api_key_set === "boolean") S.settings.api_key_set = d.api_key_set;
+    if (typeof d.api_key_hint === "string") S.settings.api_key_hint = d.api_key_hint;
+    if (S.settings.api_key_set === false) promptForKey();
   }
   function applyDevices(d) {
     S.devices = Array.isArray(d.devices) ? d.devices : [];
@@ -336,7 +342,7 @@
       t.textContent = "Qayta ulanmoqda (" + (S.conn.attempt || 0) + ")";
     } else {
       b.classList.add("err");
-      t.textContent = "Uzilgan";
+      t.textContent = S.settings.api_key_set === false ? "API kalit kerak" : "Uzilgan";
     }
     b.title = S.conn.detail || "";
     $("setWsUrl").textContent = wsUrl();
@@ -622,6 +628,15 @@
     $("setWakeSub").textContent = S.settings.wake_mode === "always" ? "doim tinglaydi" : S.settings.wake_mode === "name" ? "faqat “Hey " + (S.settings.name || "Nexus") + "” dan keyin" : S.settings.wake_mode === "smart" ? "ism yoki aniq buyruq" : "qachon tinglaydi";
     $("setAnim").classList.toggle("on", S.anim);
     $("setSeconds").classList.toggle("on", S.showSeconds);
+    const keyRow = $("apiKeyRow"), hasKey = S.settings.api_key_set === true;
+    keyRow.classList.toggle("need-key", S.settings.api_key_set === false);
+    $("setKeySub").textContent = hasKey ? "o'rnatilgan · " + (S.settings.api_key_hint || "••••") + " · almashtirish mumkin"
+      : S.settings.api_key_set === false ? "kiritilmagan · aistudio.google.com/apikey" : "aistudio.google.com/apikey";
+    $("setKey").placeholder = hasKey ? "Yangi kalit (ixtiyoriy)" : "AIza…";
+    $("setConfirm").classList.toggle("on", !!S.settings.require_confirmation);
+    $("setConfirmSub").textContent = S.settings.require_confirmation ? "yoniq · xavfli amaldan oldin so'raydi" : "o'chiq · buyruq darhol bajariladi";
+    $("setInterrupt").classList.toggle("on", !!S.settings.allow_interrupt);
+    $("setInterruptSub").textContent = S.settings.allow_interrupt ? "yoniq · gapirsangiz javob to'xtaydi" : "o'chiq · buyruq oxirigacha bajariladi";
     $("setStateSub").textContent = "holat: " + (LABEL[S.state] || S.state) + " · gemini: " + S.conn.gemini;
     document.body.classList.toggle("no-anim", !S.anim);
   }
@@ -660,6 +675,49 @@
     const v = !S.settings.conversation;
     S.settings.conversation = v; renderConv();
     send("conversation", { value: v }).then((r) => { if (r && r.ok) toast(v ? "Suhbat rejimi yoqildi" : "Suhbat rejimi o'chirildi", "ok"); });
+  }
+
+  // ── API kalit va gapni bo'lish ─────────────────────────────────────
+  // Kalit yo'q bo'lsa sozlamalar paneli bir marta o'zi ochiladi va maydonga fokus beriladi
+  function promptForKey() {
+    if (S.keyPrompted) return;
+    S.keyPrompted = true;
+    setTimeout(() => {
+      const p = $("settingsPanel");
+      if (p.hidden) { p.hidden = false; $("settingsBtn").classList.add("active"); }
+      renderSettingsPanel();
+      try { $("setKey").focus(); } catch (_) { /* fokus shart emas */ }
+      toast("Gemini API kalitini kiriting — Sozlamalar → Gemini API kaliti", "warn");
+    }, 300);
+  }
+  function saveKey() {
+    const el = $("setKey"), v = el.value.trim();
+    if (!v) { toast("API kalitni kiriting", "warn"); el.focus(); return; }
+    const btn = $("setKeySave");
+    btn.disabled = true;
+    send("set_api_key", { value: v }).then((r) => {
+      btn.disabled = false;
+      if (r && r.ok) {
+        el.value = "";
+        S.settings.api_key_set = true; S.settings.api_key_hint = r.api_key_hint || S.settings.api_key_hint;
+        renderSettingsPanel(); renderConn();
+        toast("API kalit saqlandi" + (r.persisted ? "" : " (faqat shu sessiya uchun)") + " — ulanmoqda…", "ok");
+      }
+    });
+  }
+  function toggleConfirmations() {
+    const v = !S.settings.require_confirmation;
+    S.settings.require_confirmation = v; renderSettingsPanel();
+    send("confirmations", { value: v }).then((r) => {
+      if (r && r.ok) toast(v ? "Xavfli amallardan oldin tasdiq so'raladi" : "Tasdiq o'chirildi — buyruqlar darhol bajariladi", "ok");
+    });
+  }
+  function toggleInterrupt() {
+    const v = !S.settings.allow_interrupt;
+    S.settings.allow_interrupt = v; renderSettingsPanel();
+    send("interrupt", { value: v }).then((r) => {
+      if (r && r.ok) toast(v ? "Gapni bo'lish yoqildi — gapirsangiz javob to'xtaydi" : "Javob oxirigacha aytiladi, keyingi buyruq undan keyin", "ok");
+    });
   }
 
   // ── Tasdiq kartasi ────────────────────────────────────────────────
@@ -787,6 +845,10 @@
     if ($("dictBtn")) $("dictBtn").addEventListener("click", toggleDictation);
     if ($("setDict")) $("setDict").addEventListener("click", toggleDictation);
     if ($("setConv")) $("setConv").addEventListener("click", toggleConversation);
+    $("setInterrupt").addEventListener("click", toggleInterrupt);
+    $("setConfirm").addEventListener("click", toggleConfirmations);
+    $("keyForm").addEventListener("submit", (e) => { e.preventDefault(); saveKey(); });
+    $("setKey").addEventListener("keydown", (e) => e.stopPropagation());
     if ($("setMute")) $("setMute").addEventListener("click", toggleMute);
     $("setPlayback").addEventListener("click", () => {
       const v = !(S.settings.playback === true);

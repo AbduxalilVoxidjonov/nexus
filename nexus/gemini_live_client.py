@@ -44,8 +44,11 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import random
 import time
+from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 from nexus.dictation import DictationState
@@ -57,9 +60,11 @@ log = logging.getLogger("nexus.gemini")
 STABLE_CONNECTION_S = 30.0  # shuncha vaqt ulanib tursa — backoff hisoblagichi nolga
 SHORT_SESSION_S = 5.0  # bundan kam yashagan sessiya — resume handle yaroqsiz deb tashlanadi
 SOFT_RECONNECT_DELAY_S = 0.2  # go_away / so'ralgan qayta ulanishda kutish
+STUCK_STATE_S = 20.0  # band holat (tool'siz) shuncha vaqt serverdan hech narsa kelmasa — idle ga qaytariladi
 DICTATION_PASSTHROUGH_TOOLS = frozenset({"stop_dictation", "start_dictation"})
 # Modelga bog'liq konfiguratsiya maydonlari — server rad etsa (1007) shu tartibda olib tashlanadi
-CONFIG_FALLBACK_ORDER = ("google_search", "thinking_config", "language_codes", "media_resolution")
+CONFIG_FALLBACK_ORDER = ("google_search", "thinking_config", "language_codes", "media_resolution", "activity_handling")
+NO_KEY_DETAIL = "API kaliti yo'q — Sozlamalar → Gemini API kaliti"
 
 
 # ---------------------------------------------------------------------------
@@ -96,6 +101,12 @@ def is_config_rejection(exc: BaseException) -> bool:
         # ularni olib tashlab qayta urinamiz (kvota xatosi ham konfiguratsiyaga bog'liq bo'ladi)
         return True
     return code == 1007 or "1007" in msg or "invalid argument" in low or "invalid_argument" in low
+
+
+def is_api_key_error(exc: BaseException) -> bool:
+    """Server kalitni rad etdimi (noto'g'ri / bekor qilingan API kalit)?"""
+    low = str(exc).lower()
+    return "api key" in low or "api_key" in low
 
 
 def thinking_level_for(model: str, level: str | None) -> str | None:
@@ -139,11 +150,25 @@ class GeminiConfigError(RuntimeError):
 # Mijoz
 # ---------------------------------------------------------------------------
 class GeminiLiveClient:
-    def __init__(self, bus: EventBus, settings: Any, registry: Any, audio: Any) -> None:
+    def __init__(
+        self,
+        bus: EventBus,
+        settings: Any,
+        registry: Any,
+        audio: Any,
+        *,
+        wait_for_key: bool = False,
+        key_saver: Callable[[str], Path | None] | None = None,
+    ) -> None:
         self.bus = bus
         self.settings = settings
         self.registry = registry
         self.audio = audio
+        # Kalit yo'q bo'lsa xato bilan chiqish o'rniga UI (Sozlamalar) dan kiritilishini kutish
+        self.wait_for_key = wait_for_key
+        # `set_api_key` kalitni saqlash funksiyasi (masalan `config.save_api_key`); None — faqat joriy sessiya
+        self.key_saver = key_saver
+        self._key_changed = asyncio.Event()
 
         self._session: Any = None
         self._stop = asyncio.Event()
@@ -179,6 +204,13 @@ class GeminiLiveClient:
         )
         self.dictation = DictationState()
         self._addressed = True  # joriy navbat yordamchiga qaratilganmi
+        # Javobni oxirigacha yetkazish: yordamchiga qaratilgan buyruq javobi tugaguncha (turn_complete)
+        # fon ovozlarining transkripti `_addressed` ni False ga tushirib, javob audiosini/toollarni kesmaydi.
+        self._turn_locked = False
+        self._model_turn_active = False  # model hozir javob beryapti (turn_complete hali kelmagan)
+        self._queued_addressed: bool | None = None  # javob paytida aytilgan gap — keyingi navbat uchun qaror
+        self._drop_turn_audio = False  # "to'xtatish" bosildi — joriy javobning qolgan audiosi ijro etilmaydi
+        self._last_activity = time.monotonic()  # oxirgi server xabari / foydalanuvchi navbati (watchdog)
 
         self.bus.register_command("text", self._cmd_text)
         # `kill_all` buyrug'ini ToolRegistry boshqaradi (tool tasklar + kutilayotgan tasdiq);
@@ -194,6 +226,8 @@ class GeminiLiveClient:
         self.bus.register_command("set_name", self._cmd_set_name)
         self.bus.register_command("dictation", self._cmd_dictation)
         self.bus.register_command("conversation", self._cmd_conversation)
+        self.bus.register_command("set_api_key", self._cmd_set_api_key)
+        self.bus.register_command("interrupt", self._cmd_interrupt)
 
         self.publish_settings()
 
@@ -265,6 +299,10 @@ class GeminiLiveClient:
             kwargs["thinking_config"] = types.ThinkingConfig(thinking_level=tl)
         if "media_resolution" not in dropped:
             kwargs["media_resolution"] = types.MediaResolution.MEDIA_RESOLUTION_HIGH
+        ric_kwargs: dict[str, Any] = {}
+        if not self.allow_interrupt and "activity_handling" not in dropped:
+            # Foydalanuvchi (yoki xonadagi boshqa ovoz) gapirsa ham javob uzilmaydi — keyingi gap navbatga
+            ric_kwargs["activity_handling"] = types.ActivityHandling.NO_INTERRUPTION
 
         # DIQQAT: enable_affective_dialog ISHLATILMAYDI (1007 xato), TEXT modality ham (1007).
         return types.LiveConnectConfig(
@@ -278,7 +316,7 @@ class GeminiLiveClient:
             ),
             input_audio_transcription=input_tr,
             output_audio_transcription=types.AudioTranscriptionConfig(),
-            realtime_input_config=types.RealtimeInputConfig(automatic_activity_detection=aad),
+            realtime_input_config=types.RealtimeInputConfig(automatic_activity_detection=aad, **ric_kwargs),
             **kwargs,
         )
 
@@ -289,7 +327,9 @@ class GeminiLiveClient:
         # Faol bo'lmagan maydonlarni (masalan grounding o'chiq bo'lsa google_search) o'tkazib yuboramiz
         while self._config_fallback < len(CONFIG_FALLBACK_ORDER):
             candidate = CONFIG_FALLBACK_ORDER[self._config_fallback]
-            if candidate == "google_search" and not getattr(self.settings, "google_search_grounding", False):
+            if (candidate == "google_search" and not getattr(self.settings, "google_search_grounding", False)) or (
+                candidate == "activity_handling" and self.allow_interrupt
+            ):
                 self._config_fallback += 1
                 continue
             break
@@ -305,22 +345,36 @@ class GeminiLiveClient:
     # --- asosiy sikl ----------------------------------------------------
     async def run(self) -> None:
         """Cheksiz ulanish sikli; `stop()` chaqirilguncha qayta ulanaveradi."""
-        if not (self.settings.gemini_api_key or "").strip():
-            msg = (
-                "GEMINI_API_KEY bo'sh yoki namunaviy (your_api_key_here). `.env` fayliga haqiqiy "
-                "GEMINI_API_KEY=... qo'ying (https://aistudio.google.com/apikey dan oling) va qayta ishga tushiring."
-            )
-            self.bus.publish("LOG", {"level": "error", "message": msg})
-            self.bus.publish("CONNECTION", {"gemini": "disconnected", "attempt": 0, "detail": "API kaliti yo'q"})
-            raise GeminiConfigError(msg)
+        if not self._api_key():
+            if not self.wait_for_key:
+                msg = (
+                    "GEMINI_API_KEY bo'sh yoki namunaviy (your_api_key_here). `.env` fayliga haqiqiy "
+                    "GEMINI_API_KEY=... qo'ying (https://aistudio.google.com/apikey dan oling) va qayta ishga tushiring."
+                )
+                self.bus.publish("LOG", {"level": "error", "message": msg})
+                self.bus.publish("CONNECTION", {"gemini": "disconnected", "attempt": 0, "detail": "API kaliti yo'q"})
+                raise GeminiConfigError(msg)
+            await self._wait_for_api_key()
+            if self._stop.is_set():
+                self.bus.publish("CONNECTION", {"gemini": "disconnected", "attempt": 0, "detail": "to'xtatildi"})
+                return
 
         from google import genai
 
-        client = self.settings.make_client() if hasattr(self.settings, "make_client") else genai.Client(api_key=self.settings.gemini_api_key)
+        client: Any = None
+        client_key = ""
         self.publish_settings()
         attempt = 0
         ever_connected = False
         while not self._stop.is_set():
+            if self._key_changed.is_set():
+                self._key_changed.clear()
+                attempt = 0  # yangi kalit — backoff boshidan
+            key = self._api_key()
+            if client is None or key != client_key:
+                # Kalit Sozlamalardan almashtirilgan bo'lsa mijoz yangi kalit bilan qayta quriladi
+                client = self.settings.make_client() if hasattr(self.settings, "make_client") else genai.Client(api_key=key)
+                client_key = key
             self._reconnect_requested = False
             self._go_away_pending = False
             connected_at: float | None = None
@@ -357,10 +411,17 @@ class GeminiLiveClient:
                 error = e
                 detail = f"{type(e).__name__}: {e}"
                 log.warning("Gemini sessiyasi uzildi: %s", detail)
-                self.bus.publish("LOG", {"level": "warn", "message": f"Gemini uzildi: {detail}"})
+                if is_api_key_error(e):
+                    self.bus.publish(
+                        "LOG",
+                        {"level": "error", "message": "API kalit rad etildi — Sozlamalar → Gemini API kalitini yangilang"},
+                    )
+                else:
+                    self.bus.publish("LOG", {"level": "warn", "message": f"Gemini uzildi: {detail}"})
             finally:
                 self._session = None
                 self.connected = False
+                self._reset_turn_tracking()
                 self._audio_call("pause_upstream")
                 self.audio.player.clear()
                 await self._cancel_tool_tasks()
@@ -393,12 +454,36 @@ class GeminiLiveClient:
                 )
             if getattr(self.bus, "state", None) != "awaiting_confirmation":  # UI dan boshlangan tasdiq kartasini buzmaymiz
                 self.bus.set_state(self._idle_state())
-            try:
-                await asyncio.wait_for(self._stop.wait(), timeout=delay)
-            except TimeoutError:
-                pass
+            await self._sleep_unless_woken(delay)
 
         self.bus.publish("CONNECTION", {"gemini": "disconnected", "attempt": 0, "detail": "to'xtatildi"})
+
+    def _api_key(self) -> str:
+        return (getattr(self.settings, "gemini_api_key", "") or "").strip()
+
+    async def _wait_for_api_key(self) -> None:
+        """Kalit Sozlamalardan (`set_api_key`) kiritilguncha yoki `stop()` gacha kutadi."""
+        msg = "Gemini API kaliti kiritilmagan — Sozlamalar (⚙) → Gemini API kaliti (https://aistudio.google.com/apikey)"
+        log.warning(msg)
+        self.bus.publish("LOG", {"level": "warn", "message": msg})
+        self.bus.publish("CONNECTION", {"gemini": "disconnected", "attempt": 0, "detail": NO_KEY_DETAIL})
+        self.publish_settings()
+        while not self._api_key() and not self._stop.is_set():
+            self._key_changed.clear()
+            await self._sleep_unless_woken(None)
+
+    async def _sleep_unless_woken(self, timeout: float | None) -> None:
+        """`timeout` sekund (None — cheksiz) kutadi; `stop()` yoki yangi API kalit uyg'otadi."""
+        waiters = [
+            asyncio.create_task(self._stop.wait(), name="gemini-stop-wait"),
+            asyncio.create_task(self._key_changed.wait(), name="gemini-key-wait"),
+        ]
+        try:
+            await asyncio.wait(waiters, timeout=timeout, return_when=asyncio.FIRST_COMPLETED)
+        finally:
+            for w in waiters:
+                w.cancel()
+            await asyncio.gather(*waiters, return_exceptions=True)
 
     async def _session_loop(self, session: Any) -> None:
         send_task = asyncio.create_task(self._send_audio(session), name="gemini-send")
@@ -492,6 +577,7 @@ class GeminiLiveClient:
         self.bus.publish("TRANSCRIPT", {"role": "user", "text": text, "final": True})
         self._note_user_turn(text)
         self._addressed = True  # UI dan yozilgan matn — aniq bizga
+        self._turn_locked = True
         self.wake.touch()
         self._turn_start_ts = time.monotonic()
         self._first_audio_reported = False
@@ -519,6 +605,7 @@ class GeminiLiveClient:
                 return
 
     async def _handle_message(self, session: Any, msg: Any) -> None:
+        self._last_activity = time.monotonic()
         sru = getattr(msg, "session_resumption_update", None)
         if sru is not None:
             new_handle = getattr(sru, "new_handle", None)
@@ -533,7 +620,9 @@ class GeminiLiveClient:
 
         tc = getattr(msg, "tool_call", None)
         if tc is not None and getattr(tc, "function_calls", None):
+            self._model_turn_active = True
             if self._addressed and not self.dictation.active:
+                self._turn_locked = True
                 self.bus.set_state("tool_executing")
             task = asyncio.create_task(self._handle_tool_call(session, tc), name="gemini-tool")
             self._tool_tasks.add(task)
@@ -602,8 +691,15 @@ class GeminiLiveClient:
     def _handle_server_content(self, sc: Any) -> None:
         dictating = self.dictation.active
 
-        # 1) Uzilish — foydalanuvchi gapirdi: ijro navbatini tozalaymiz, uzoq toollarni bekor qilamiz
-        if getattr(sc, "interrupted", None):
+        # 1) Uzilish — foydalanuvchi gapirdi: ijro navbatini tozalaymiz, uzoq toollarni bekor qilamiz.
+        # "Javobni oxirigacha" rejimida (standart) server odatda uzmaydi (NO_INTERRUPTION); baribir uzsa
+        # (masalan konfiguratsiya zaxirasida) — yig'ilgan audio oxirigacha ijro etiladi, toollar to'xtatilmaydi.
+        if getattr(sc, "interrupted", None) and not self.allow_interrupt:
+            log.info("Interrupted (javobni oxirigacha rejimi) — ijro va toollar davom etadi")
+            self._player_call("play_out")
+        elif getattr(sc, "interrupted", None):
+            self._turn_locked = False
+            self._model_turn_active = False
             dropped = self.audio.player.clear()
             awaiting = self.bus.state == "awaiting_confirmation" or self._confirmation_pending()
             # Tasdiq kutilayotganda "ha" deyish ham barge-in — toolni o'ldirmaymiz, holatni yashirmaymiz
@@ -631,6 +727,7 @@ class GeminiLiveClient:
         # 3) Chiquvchi transkript (yordamchi)
         ot = getattr(sc, "output_transcription", None)
         if ot is not None and getattr(ot, "text", None):
+            self._model_turn_active = True
             self._assistant_text += ot.text
             if self._addressed and not dictating:
                 self.bus.publish("TRANSCRIPT", {"role": "assistant", "text": self._assistant_text, "final": False})
@@ -644,7 +741,9 @@ class GeminiLiveClient:
                 if data:
                     if self._user_text:
                         self._finalize_user_turn()
-                    if self._addressed and not dictating:
+                    self._model_turn_active = True
+                    if self._addressed and not dictating and not self._drop_turn_audio:
+                        self._turn_locked = True
                         self._report_first_audio()
                         self.audio.player.enqueue(data)
                         if self.bus.state != "speaking":
@@ -686,15 +785,22 @@ class GeminiLiveClient:
                         final["sources"] = list(self._sources)
                     self.bus.publish("TRANSCRIPT", final)
                     self.wake.touch()
+                    self.wake.expect_answer(_asks_question(self._assistant_text))
                 else:
                     log.info("Javob bostirildi (%s): %s", "diktovka" if dictating else "ism aytilmadi",
                              self._assistant_text[:80])
                 self._assistant_text = ""
             self._turn_start_ts = None
             self._sources = []
-            # Keyingi navbat uchun boshlang'ich qaror: follow-up oynasi ochiq bo'lsa — bizga
-            self._addressed = self.wake.should_act("")
+            self._model_turn_active = False
+            self._drop_turn_audio = False
             if not self._tool_tasks:
+                # Javob to'liq tugadi (tool natijasini kutayotgan navbat emas) — qulf ochiladi.
+                # Keyingi navbat uchun qaror: javob paytida aytilgan gap bo'lsa — o'sha paytdagi baho,
+                # aks holda follow-up oynasi ochiq bo'lsa — bizga.
+                self._turn_locked = False
+                queued, self._queued_addressed = self._queued_addressed, None
+                self._addressed = queued if queued is not None else self.wake.should_act("")
                 self.bus.set_state(self._idle_state())
 
     def _player_call(self, name: str) -> None:
@@ -705,14 +811,59 @@ class GeminiLiveClient:
             except Exception as e:  # noqa: BLE001
                 log.debug("player.%s xatosi: %s", name, e)
 
-    def _evaluate_addressed(self, text: str) -> None:
-        """Wake rejimi bo'yicha joriy navbat bizga qaratilganmi (qisman transkriptda ham)."""
+    def _evaluate_addressed(self, text: str, final: bool = False) -> bool:
+        """Wake rejimi bo'yicha gap bizga qaratilganmi (qisman transkriptda ham). Baho qaytariladi.
+
+        Qaratilgan javob davom etayotganda (`_turn_locked`) False baho `_addressed` ni o'zgartirmaydi —
+        xonadagi boshqa ovoz boshlangan javobni yarim yo'lda o'chirib qo'ymasin.
+
+        Rad javobi ("yo'q, hozircha hech narsa") — javob berilmaydi; `final` bo'lsa follow-up oynasi
+        ham yopiladi: yordamchi yana ism bilan chaqirilguncha jim kutadi."""
         self.tick()
         if not self.wake.conversation and wants_conversation(text):
             self.set_conversation(True)  # "kel gaplashamiz" — ismsiz ham suhbat boshlanadi
-        self._addressed = self.wake.should_act(text)
+        # Follow-up oynasi yordamchi ovozi tugagan paytdan hisoblanadi ("Yana nima qilay?" savolidan keyin)
+        last_out = self._playback_last_ts()
+        if last_out:
+            self.wake.extend_to(last_out)
+        act = self.wake.should_act(text, at=self._speech_started_at())
+        if act and self._dismissal_applies(text):
+            act = False
+            if final:
+                self.wake.release()
+                log.info("Rad javobi — ism bilan chaqirilguncha jim kutiladi: %s", text[:80])
+                self.bus.publish("LOG", {"level": "info", "message": "Kutyapman — kerak bo'lsa ismimni ayting"})
+        if act or not self._turn_locked:
+            self._addressed = act
+        return act
+
+    def _dismissal_applies(self, text: str) -> bool:
+        """"Yo'q / hech narsa kerak emas" rad javobi sifatida qaralsinmi? Suhbat rejimida va tasdiq
+        kutilayotganda ("yo'q" — amalni rad etish, ToolRegistry hal qiladi) — yo'q."""
+        if self.wake.conversation or self.dictation.active:
+            return False
+        if self.bus.state == "awaiting_confirmation" or self._confirmation_pending():
+            return False
+        return self.wake.is_dismissal(text)
+
+    def _speech_started_at(self) -> float | None:
+        """Joriy gap boshlangan payt (AudioStreamer RMS gate). Noma'lum yoki eskirgan bo'lsa None."""
+        try:
+            ts = float(getattr(self.audio, "speech_started_at", 0.0) or 0.0)
+        except (TypeError, ValueError):
+            return None
+        if not ts or time.monotonic() - ts > 60.0:
+            return None
+        return ts
+
+    def _playback_last_ts(self) -> float:
+        try:
+            return float(getattr(self.audio.player, "last_output_ts", 0.0) or 0.0)
+        except (AttributeError, TypeError, ValueError):
+            return 0.0
 
     def _finalize_user_turn(self) -> None:
+        self._last_activity = time.monotonic()
         text = self._user_text
         if text:
             self.bus.publish("TRANSCRIPT", {"role": "user", "text": text, "final": True})
@@ -723,12 +874,18 @@ class GeminiLiveClient:
             self._dispatch_dictation(text)
             return
         if text:
-            self._evaluate_addressed(text)
-            if not self._addressed:
+            during_reply = self._model_turn_active
+            act = self._evaluate_addressed(text, final=True)
+            if during_reply:
+                # Javob paytida aytilgan gap — hozirgi javob davom etadi, bu gap keyingi navbatda ko'riladi
+                self._queued_addressed = act
+            if not act:
                 log.info("Ism aytilmadi (%s rejimi) — e'tibor berilmaydi: %s", self.wake.mode, text[:80])
-            elif self.wake.conversation and ends_conversation(text):
-                # Shu gapga (masalan "xayr") hali javob beriladi, keyingisi — yana faqat ism bilan
-                self.set_conversation(False)
+            else:
+                self._turn_locked = True
+                if self.wake.conversation and ends_conversation(text):
+                    # Shu gapga (masalan "xayr") hali javob beriladi, keyingisi — yana faqat ism bilan
+                    self.set_conversation(False)
         self._turn_start_ts = time.monotonic()
         self._first_audio_reported = False
         if self.bus.state in ("idle", "listening"):
@@ -816,12 +973,30 @@ class GeminiLiveClient:
         return active
 
     def tick(self) -> None:
-        """Davriy tekshiruv (MetricsTicker): jimlik tufayli suhbat rejimini tugatish."""
+        """Davriy tekshiruv (MetricsTicker): jimlik tufayli suhbat rejimini tugatish; osilib qolgan holat."""
+        self._watchdog()
         playing = bool(getattr(getattr(self.audio, "player", None), "is_playing", False))
         if self.wake.conversation and playing:
             self.wake.touch()  # yordamchi gapiryapti — jimlik hisoblanmaydi
         elif self.wake.conversation_expired:
             self.set_conversation(False, reason=f"{int(self.wake.conversation_idle_s)} s jimlik", follow_up=False)
+
+    def _watchdog(self) -> None:
+        """Band holat (processing / tool_executing / speaking) tool ham, ijro ham, server xabari ham
+        bo'lmasa `STUCK_STATE_S` dan keyin idle ga qaytariladi: bu holatda mikrofon bostiriladi —
+        yordamchi "ishlamay qolgandek" ko'rinmasin."""
+        if self.bus.state not in ("processing", "tool_executing", "speaking") or self._tool_tasks:
+            return
+        if bool(getattr(getattr(self.audio, "player", None), "is_playing", False)):
+            return
+        idle_for = time.monotonic() - self._last_activity
+        if idle_for < STUCK_STATE_S:
+            return
+        log.warning("Holat %r %.0f s o'zgarmadi (javob kelmadi) — idle ga qaytarildi", self.bus.state, idle_for)
+        self.bus.publish("LOG", {"level": "warn", "message": "Javob kelmadi — qayta tinglayapman"})
+        self._reset_turn_tracking()
+        self._last_activity = time.monotonic()
+        self.bus.set_state(self._idle_state())
 
     async def _cmd_conversation(self, msg: dict[str, Any]) -> dict[str, Any]:
         return {"conversation": self.set_conversation(bool(msg.get("value", True)), reason="qo'lda")}
@@ -829,9 +1004,11 @@ class GeminiLiveClient:
     # --- wake -----------------------------------------------------------
     def publish_settings(self) -> dict[str, Any]:
         data = dict(self.bus.snapshot.get("SETTINGS") or {})
+        key = self._api_key()
         data.update({
             "wake_mode": self.wake.mode, "name": self.wake.name, "dictating": self.dictation.active,
-            "conversation": self.wake.conversation,
+            "conversation": self.wake.conversation, "allow_interrupt": self.allow_interrupt,
+            "api_key_set": bool(key), "api_key_hint": _key_hint(key),
         })
         self.bus.publish("SETTINGS", data)
         return data
@@ -927,6 +1104,10 @@ class GeminiLiveClient:
         """ToolRegistry.kill_all() ilgagi: klient tool tasklari bekor, ijro navbati tozalanadi."""
         await self._cancel_tool_tasks()
         self._player_call("clear")
+        if self._model_turn_active:
+            self._drop_turn_audio = True  # javob hali oqib kelyapti — qolgani ijro etilmasin
+        self._turn_locked = False
+        self._queued_addressed = None
         # gate.cancel_pending() holatni "processing" ga o'tkazadi; Gemini'ga javob yuborilmaydi —
         # spinner osilib qolmasin.
         if self.bus.state in ("tool_executing", "processing", "awaiting_confirmation"):
@@ -959,3 +1140,70 @@ class GeminiLiveClient:
     async def _cmd_dictation(self, msg: dict[str, Any]) -> dict[str, Any]:
         active = self.set_dictation(bool(msg.get("value", True)))
         return {"dictating": active}
+
+    # --- API kalit va "javobni oxirigacha" rejimi -------------------------
+    @property
+    def allow_interrupt(self) -> bool:
+        return bool(getattr(self.settings, "allow_interrupt", False))
+
+    def _reset_turn_tracking(self) -> None:
+        self._turn_locked = False
+        self._model_turn_active = False
+        self._queued_addressed = None
+        self._drop_turn_audio = False
+
+    async def _cmd_set_api_key(self, msg: dict[str, Any]) -> dict[str, Any]:
+        """UI (Sozlamalar) dan API kalit: tekshiradi, saqlaydi va sessiyani yangi kalit bilan qayta ulaydi."""
+        from nexus.config import validate_api_key
+
+        key = validate_api_key(str(msg.get("value", "") or ""))
+        path: Path | None = None
+        persisted = self.key_saver is not None
+        if persisted:
+            path = await asyncio.to_thread(self.key_saver, key)
+        self.settings.gemini_api_key = key
+        os.environ["GEMINI_API_KEY"] = key
+        self._resume_handle = None  # eski kalit sessiyasining handle'i yangi kalitga yaramaydi
+        self._key_changed.set()
+        if self._session is not None:
+            self.request_reconnect("api_key")
+            self._stop_session_soft()
+        log.info("API kalit yangilandi (%s)%s", _key_hint(key), f" → {path}" if path else "")
+        self.bus.publish("LOG", {"level": "info", "message": "API kalit saqlandi — Gemini'ga ulanmoqda"})
+        self.publish_settings()
+        return {"api_key_hint": _key_hint(key), "persisted": persisted}
+
+    def set_allow_interrupt(self, value: bool) -> bool:
+        value = bool(value)
+        if value == self.allow_interrupt:
+            return value
+        self.settings.allow_interrupt = value
+        if hasattr(self.audio, "barge_in"):
+            self.audio.barge_in = value
+        # activity_handling ulanish konfiguratsiyasida — o'zgarganda qayta ulanamiz (resume handle bilan)
+        if self._session is not None:
+            self.request_reconnect("interrupt")
+            self._stop_session_soft()
+        msg = (
+            "Gapni bo'lish yoqildi — javob paytida gapirsangiz yordamchi to'xtaydi"
+            if value
+            else "Javobni oxirigacha rejimi — har bir buyruq tugagach keyingisiga o'tiladi"
+        )
+        self.bus.publish("LOG", {"level": "info", "message": msg})
+        self.publish_settings()
+        return value
+
+    async def _cmd_interrupt(self, msg: dict[str, Any]) -> dict[str, Any]:
+        return {"allow_interrupt": self.set_allow_interrupt(bool(msg.get("value", False)))}
+
+
+def _asks_question(text: str) -> bool:
+    """Yordamchi javobi foydalanuvchidan javob kutadimi ("Yana nima qilay?", "Labbay, sizni eshitaman")?"""
+    t = (text or "").strip().lower()
+    return t.endswith("?") or any(w in t for w in ("eshitaman", "слушаю", "listening"))
+
+
+def _key_hint(key: str) -> str:
+    from nexus.config import api_key_hint
+
+    return api_key_hint(key)

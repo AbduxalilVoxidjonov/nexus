@@ -3,8 +3,11 @@ from __future__ import annotations
 
 import asyncio
 import math
+import os
 import sys
+import time
 import types as pytypes
+from pathlib import Path
 from types import SimpleNamespace
 from typing import ClassVar
 
@@ -518,6 +521,7 @@ async def test_handle_message_cancellation_and_go_away():
 
 async def test_server_content_audio_transcript_interrupt():
     client, bus, _reg, audio = make_client()
+    client.settings.allow_interrupt = True  # barge-in rejimi
     q = bus.subscribe()
     # Foydalanuvchi transkripti
     client._handle_server_content(
@@ -918,7 +922,7 @@ def test_echo_gate(rms, playing, guard, expected):
 async def test_streamer_echo_guard_sends_silence_and_upstream_pause(fake_sd):
     bus = EventBus()
     bus.bind_loop()
-    st = AudioStreamer(bus, make_settings())
+    st = AudioStreamer(bus, make_settings(allow_interrupt=True))
     st.start()
     st.player.enqueue(b"\x01\x02" * 100)  # "yordamchi gapiryapti"
     quiet = sine_pcm(0.03)
@@ -973,6 +977,7 @@ async def test_streamer_settings_merge_snapshot(fake_sd):
 # ---------------------------------------------------------------------------
 async def test_interrupted_cancels_tools_and_generation_complete_plays_out():
     client, bus, reg, audio = make_client()
+    client.settings.allow_interrupt = True
     audio.player = AudioPlayer(sample_rate=1000, enabled=False, prebuffer_ms=100)
     client._handle_server_content(_sc(model_turn=SimpleNamespace(parts=[_audio_part(10)])))
     assert audio.player.armed is False
@@ -1037,7 +1042,10 @@ async def test_wake_commands_update_settings():
     assert r["ok"] is False
     r = await bus.dispatch_command({"cmd": "set_name", "value": "Luna"})
     assert r["ok"] and client.wake.name == "Luna"
-    assert bus.snapshot["SETTINGS"] == {"wake_mode": "smart", "name": "Luna", "dictating": False, "conversation": False}
+    assert bus.snapshot["SETTINGS"] == {
+        "wake_mode": "smart", "name": "Luna", "dictating": False, "conversation": False,
+        "allow_interrupt": False, "api_key_set": True, "api_key_hint": "…ey",
+    }
     r = await bus.dispatch_command({"cmd": "set_name", "value": "  "})
     assert r["ok"] is False
 
@@ -1130,6 +1138,7 @@ async def test_user_turn_without_registry_hooks():
 
 async def test_interrupted_respects_awaiting_confirmation():
     client, bus, reg, audio = make_client()
+    client.settings.allow_interrupt = True
     audio.player.enqueue(b"\x01\x02" * 10)
     # 1) Bus holati awaiting_confirmation — holat saqlanadi, tool bekor qilinmaydi
     bus.set_state("awaiting_confirmation")
@@ -1269,7 +1278,10 @@ async def test_config_fallback_order_on_1007(monkeypatch):
     assert c3.thinking_config is None and c3.input_audio_transcription.language_codes is None  # 2) language_codes
     assert c3.media_resolution == types.MediaResolution.MEDIA_RESOLUTION_HIGH
     assert c4.media_resolution is None  # 3) media_resolution
-    assert client._config_fallback == len(CONFIG_FALLBACK_ORDER)  # google_search (faol emas) o'tkazib yuborilgan
+    no_int = types.ActivityHandling.NO_INTERRUPTION
+    assert c1.realtime_input_config.activity_handling == no_int
+    assert c4.realtime_input_config.activity_handling == no_int  # oxirgi zaxira — hali olib tashlanmagan
+    assert client._config_fallback == len(CONFIG_FALLBACK_ORDER) - 1  # google_search (faol emas) o'tkazib yuborilgan
     logs = [e["data"]["message"] for e in [q.get_nowait() for _ in range(q.qsize())] if e["type"] == "LOG"]
     assert sum("rad etdi" in m for m in logs) == 3
 
@@ -1645,3 +1657,402 @@ def test_conversation_tools_registered():
 
     r = ToolRegistry()
     assert r.has("start_conversation") and r.has("stop_conversation")
+
+
+# ---------------------------------------------------------------------------
+# API kalit — Sozlamalardan kiritish
+# ---------------------------------------------------------------------------
+async def test_run_waits_for_api_key_from_settings(monkeypatch):
+    import google.genai as genai_mod
+
+    bus = EventBus()
+    bus.bind_loop()
+    saved: list[str] = []
+    client = GeminiLiveClient(
+        bus, make_settings(gemini_api_key=""), FakeRegistry(), FakeAudio(),
+        wait_for_key=True, key_saver=lambda k: saved.append(k),
+    )
+    assert bus.snapshot["SETTINGS"]["api_key_set"] is False
+    s1 = FakeSession(turns=[])
+    live = FakeLiveConnect([s1])
+    used_keys: list[str] = []
+
+    def _client(api_key):
+        used_keys.append(api_key)
+        return SimpleNamespace(aio=SimpleNamespace(live=live))
+
+    monkeypatch.setattr(genai_mod, "Client", _client)
+    orig_loop = client._session_loop
+
+    async def _loop(session):
+        await orig_loop(session)
+        client._stop.set()
+
+    monkeypatch.setattr(client, "_session_loop", _loop)
+    task = asyncio.create_task(client.run())
+    await asyncio.sleep(0.05)
+    assert not task.done() and live.configs == []  # kalitsiz ulanmaydi, xato bilan chiqmaydi ham
+    assert "Sozlamalar" in bus.snapshot["CONNECTION"]["detail"]
+
+    bad = await bus.dispatch_command({"cmd": "set_api_key", "value": "your_api_key_here"})
+    assert bad["ok"] is False and saved == []
+    bad = await bus.dispatch_command({"cmd": "set_api_key", "value": "AIza bad\nALLOW_TERMINAL=true"})
+    assert bad["ok"] is False and saved == []  # .env ga qator qo'shib bo'lmaydi
+
+    key = "AIzaSyTestKey_1234567890abcdef"
+    r = await bus.dispatch_command({"cmd": "set_api_key", "value": f"  {key} "})
+    assert r["ok"] and r["persisted"] is True and r["api_key_hint"] == "AIza…cdef"
+    assert saved == [key] and client.settings.gemini_api_key == key
+    await asyncio.wait_for(task, 5)
+    assert used_keys == [key] and len(live.configs) == 1
+    snap = bus.snapshot["SETTINGS"]
+    assert snap["api_key_set"] is True and snap["api_key_hint"] == "AIza…cdef"
+    assert key not in str(bus.snapshot)  # to'liq kalit UI ga hech qachon yuborilmaydi
+
+
+async def test_set_api_key_reconnects_live_session():
+    client, bus, _reg, _ = make_client()
+    session = FakeSession()
+    client._session = session
+    client._resume_handle = "OLD"
+    r = await bus.dispatch_command({"cmd": "set_api_key", "value": "AIzaSyAnotherKey_0987654321"})
+    assert r["ok"] and r["persisted"] is False  # key_saver yo'q — faqat joriy sessiya
+    await asyncio.sleep(0)
+    assert client._reconnect_requested and client._reconnect_reason == "api_key"
+    assert client._resume_handle is None and client._key_changed.is_set()
+    assert session.closed
+
+
+def test_save_api_key_updates_env_file(tmp_path: Path, monkeypatch):
+    from nexus import config
+
+    env = tmp_path / ".env"
+    env.write_text("# izoh\nGEMINI_API_KEY=your_api_key_here\nWAKE_NAME=Nexus\nexport GEMINI_API_KEY=eski\n", encoding="utf-8")
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    out = config.save_api_key("AIzaSyNewKey_abcdefghijklmn", env)
+    assert out == env
+    assert env.read_text(encoding="utf-8") == "# izoh\nGEMINI_API_KEY=AIzaSyNewKey_abcdefghijklmn\nWAKE_NAME=Nexus\n"
+    assert (env.stat().st_mode & 0o777) == 0o600
+    assert os.environ["GEMINI_API_KEY"] == "AIzaSyNewKey_abcdefghijklmn"
+    fresh = tmp_path / "sub" / ".env"
+    config.save_api_key("AIzaSyNewKey_abcdefghijklmn", fresh)
+    assert fresh.read_text(encoding="utf-8") == "GEMINI_API_KEY=AIzaSyNewKey_abcdefghijklmn\n"
+    with pytest.raises(ValueError):
+        config.save_api_key("qisqa", env)
+
+
+def test_api_key_env_path_prefers_file_that_wins(tmp_path: Path, monkeypatch):
+    from nexus import config
+
+    home = Path("~/.nexus/.env").expanduser()
+    proj = tmp_path / ".env"
+    proj.write_text("GEMINI_API_KEY=your_api_key_here\n", encoding="utf-8")
+    monkeypatch.setattr(config, "env_candidates", lambda: [proj, home])
+    assert config.api_key_env_path() == proj  # namunaviy qiymat ham ustun turadi — o'sha fayl yangilanadi
+    proj.write_text("WAKE_NAME=Nexus\n", encoding="utf-8")
+    assert config.api_key_env_path() == home
+
+
+# ---------------------------------------------------------------------------
+# Javobni oxirigacha (standart: gapni bo'lish o'chiq)
+# ---------------------------------------------------------------------------
+async def test_no_interrupt_mode_config_and_interrupted_keeps_reply():
+    from google.genai import types
+
+    client, bus, reg, audio = make_client()
+    cfg = client._build_config()
+    assert cfg.realtime_input_config.activity_handling == types.ActivityHandling.NO_INTERRUPTION
+    client._handle_server_content(_sc(model_turn=SimpleNamespace(parts=[_audio_part(10)])))
+    assert bus.state == "speaking"
+    client._handle_server_content(_sc(interrupted=True))
+    assert audio.player.pending_bytes() == 20  # javob tashlanmadi
+    assert reg.cancelled == 0  # toollar to'xtatilmadi
+    assert bus.state == "speaking"
+
+    client.settings.allow_interrupt = True
+    cfg = client._build_config()
+    assert cfg.realtime_input_config.activity_handling is None
+
+
+async def test_background_voice_does_not_cut_addressed_reply():
+    bus = EventBus()
+    bus.bind_loop()
+    reg = FakeRegistry()
+    audio = FakeAudio()
+    client = GeminiLiveClient(bus, make_settings(wake_mode="name"), reg, audio)
+    client.wake.follow_up_s = 0.0  # follow-up oynasi yo'q — ismsiz gap bizga emas
+    session = FakeSession()
+    client._handle_server_content(_sc(input_transcription=SimpleNamespace(text="Nexus, ob-havo qanday", finished=True)))
+    assert client._addressed is True
+    client._handle_server_content(_sc(model_turn=SimpleNamespace(parts=[_audio_part()])))
+    # Javob davom etayotganda xonadagi boshqa odam gapirdi (ismsiz, follow-up oynasi yo'q)
+    client._handle_server_content(_sc(input_transcription=SimpleNamespace(text="choy ichamizmi", finished=True)))
+    assert client._addressed is True  # boshlangan javob kesilmaydi
+    client._handle_server_content(_sc(model_turn=SimpleNamespace(parts=[_audio_part()])))
+    assert audio.player.pending_bytes() == 200
+    tc = SimpleNamespace(function_calls=[SimpleNamespace(id="1", name="get_weather", args={})])
+    results = await client._handle_tool_call(session, tc)
+    assert results[0]["response"]["ok"] is True
+    client._handle_server_content(_sc(turn_complete=True))
+    # Navbatdagi javob (fon gapiga) — ijro etilmaydi
+    assert client._addressed is False
+    client._handle_server_content(_sc(model_turn=SimpleNamespace(parts=[_audio_part()])))
+    assert audio.player.pending_bytes() == 200
+
+
+async def test_kill_all_drops_rest_of_streaming_reply():
+    client, _bus, _reg, audio = make_client()
+    client._handle_server_content(_sc(model_turn=SimpleNamespace(parts=[_audio_part()])))
+    assert audio.player.pending_bytes() == 100
+    await client._on_kill_all()
+    assert audio.player.pending_bytes() == 0
+    client._handle_server_content(_sc(model_turn=SimpleNamespace(parts=[_audio_part()])))
+    assert audio.player.pending_bytes() == 0  # to'xtatilgan javobning davomi ijro etilmaydi
+    client._handle_server_content(_sc(turn_complete=True))
+    client._handle_server_content(_sc(model_turn=SimpleNamespace(parts=[_audio_part()])))
+    assert audio.player.pending_bytes() == 100  # keyingi javob odatdagidek
+
+
+async def test_interrupt_command_toggles_and_reconnects():
+    client, bus, _reg, audio = make_client()
+    audio.barge_in = False
+    session = FakeSession()
+    client._session = session
+    r = await bus.dispatch_command({"cmd": "interrupt", "value": True})
+    assert r["ok"] and r["allow_interrupt"] is True
+    assert audio.barge_in is True and client.settings.allow_interrupt is True
+    assert bus.snapshot["SETTINGS"]["allow_interrupt"] is True
+    assert client._reconnect_reason == "interrupt"
+
+
+async def test_streamer_holds_mic_during_reply(fake_sd):
+    bus = EventBus()
+    bus.bind_loop()
+    st = AudioStreamer(bus, make_settings())
+    st.start()
+    assert st.barge_in is False
+    st.player.enabled = True  # ijro yoqiq (oqimsiz soxta pleer)
+    st.player.enqueue(b"\x01\x02" * 100)  # yordamchi gapiryapti
+    loud = sine_pcm(0.5)
+    for _ in range(st._barge.need + 3):
+        assert st._process_chunk(loud) is True
+    await asyncio.sleep(0)
+    items = [st._queue.get_nowait() for _ in range(st._queue.qsize())]
+    assert items and all(c == b"\x00" * len(loud) for c in items)  # baland gap ham o'tmaydi
+    # Tasdiq kutilayotganda — odatdagi barge-in ("ha" deyish mumkin)
+    bus.set_state("awaiting_confirmation")
+    for _ in range(st._barge.need):
+        st._process_chunk(loud)
+    await asyncio.sleep(0)
+    items = [st._queue.get_nowait() for _ in range(st._queue.qsize())]
+    assert items == [loud] * st._barge.need
+    st.player.clear()
+    st.stop()
+
+
+# ---------------------------------------------------------------------------
+# Bitta buyruq: "Labbay" → buyruq → "Yana nima qilay?" → "yo'q" → jim kutish
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        ("Yo'q", True), ("yo'q, hozircha hech narsa", True), ("Hozircha hech narsa kerak emas", True),
+        ("rahmat", True), ("Nexus, hech narsa", True), ("нет, ничего", True), ("no thanks", True),
+        ("Nexus", False), ("yo'q, Chrome'ni och", False), ("rahmat, endi YouTube och", False),
+        ("ovozni pasaytir", False), ("", False),
+    ],
+)
+def test_is_dismissal(text, expected):
+    from nexus.wake import is_dismissal
+
+    assert is_dismissal(text, "Nexus") is expected
+
+
+def test_wake_extend_to_counts_from_playback_end():
+    from nexus.wake import WakeState
+
+    w = WakeState(name="Nexus", mode="name", follow_up_s=5.0)
+    w.extend_to(time.monotonic())
+    assert not w.engaged  # yopiq oyna qayta ochilmaydi
+    w._called_at = time.monotonic() - 100
+    assert not w.engaged
+    w.extend_to(time.monotonic() - 1)  # ovoz 1 s oldin tugagan
+    assert w.engaged
+
+
+def test_system_instruction_turn_flow():
+    from nexus.tools.schemas import SYSTEM_INSTRUCTION
+
+    assert "Labbay, sizni eshitaman." in SYSTEM_INSTRUCTION
+    assert "Yana nima qilay?" in SYSTEM_INSTRUCTION
+    assert "say nothing at all" in SYSTEM_INSTRUCTION
+
+
+async def test_dismissal_keeps_silent_and_waits_for_name():
+    bus = EventBus()
+    bus.bind_loop()
+    reg = FakeRegistry()
+    audio = FakeAudio()
+    client = GeminiLiveClient(bus, make_settings(wake_mode="name"), reg, audio)
+    session = FakeSession()
+    # Buyruq bajarildi, yordamchi "Yana nima qilay?" deb so'radi — follow-up oynasi ochiq
+    client._handle_server_content(_sc(input_transcription=SimpleNamespace(text="Nexus, Safarini och", finished=True)))
+    client._handle_server_content(_sc(model_turn=SimpleNamespace(parts=[_audio_part()])))
+    client._handle_server_content(_sc(turn_complete=True))
+    assert client._addressed is True and client.wake.engaged
+    audio.player.clear()
+    # "Yo'q, hozircha hech narsa" — javob ovozi ham, tool ham yo'q; oyna yopiladi
+    client._handle_server_content(_sc(input_transcription=SimpleNamespace(text="Yo'q, hozircha hech narsa", finished=True)))
+    assert client._addressed is False and not client.wake.engaged
+    client._handle_server_content(_sc(model_turn=SimpleNamespace(parts=[_audio_part()])))
+    assert audio.player.pending_bytes() == 0
+    tc = SimpleNamespace(function_calls=[SimpleNamespace(id="1", name="open_app", args={})])
+    results = await client._handle_tool_call(session, tc)
+    assert results[0]["response"]["ok"] is False
+    client._handle_server_content(_sc(turn_complete=True))
+    assert client._addressed is False and bus.state == "idle"
+    # Ismsiz keyingi gap — e'tiborsiz; ism bilan — yana ishlaydi
+    client._handle_server_content(_sc(input_transcription=SimpleNamespace(text="YouTube och", finished=True)))
+    assert client._addressed is False
+    client._handle_server_content(_sc(turn_complete=True))
+    client._handle_server_content(_sc(input_transcription=SimpleNamespace(text="Nexus", finished=True)))
+    assert client._addressed is True
+
+
+async def test_dismissal_not_applied_while_confirming():
+    client, _bus, reg, _ = make_client()
+    reg.gate = SimpleNamespace(pending=SimpleNamespace(token="t"))
+    client._handle_server_content(_sc(input_transcription=SimpleNamespace(text="yo'q", finished=True)))
+    assert client._addressed is True  # "yo'q" — amalni rad etish, registry'ga yetib boradi
+    assert reg.utterances and reg.utterances[-1][0] == "yo'q"
+
+
+async def test_follow_up_counts_from_end_of_reply_audio():
+    client, _bus, _reg, audio = make_client()
+    client.wake.set_mode("name")
+    client.wake.follow_up_s = 5.0
+    client.wake._called_at = time.monotonic() - 30  # ism 30 s oldin aytilgan (uzun javob)
+    audio.player._last_out_ts = time.monotonic() - 1  # "Yana nima qilay?" 1 s oldin tugadi
+    client._handle_server_content(_sc(input_transcription=SimpleNamespace(text="Chrome och", finished=True)))
+    assert client._addressed is True
+
+
+async def test_streamer_holds_mic_while_busy(fake_sd, monkeypatch):
+    import nexus.audio_streamer as am
+
+    bus = EventBus()
+    bus.bind_loop()
+    st = AudioStreamer(bus, make_settings(echo_guard=False))
+    st.start()
+    loud = sine_pcm(0.5)
+    for state in ("processing", "tool_executing", "speaking"):
+        bus.set_state(state)
+        st._process_chunk(loud)
+        await asyncio.sleep(0)
+        assert st._queue.get_nowait() == b"\x00" * len(loud), state  # navbatga ham tushmaydi
+    bus.set_state("idle")
+    st._process_chunk(loud)
+    await asyncio.sleep(0)
+    assert st._queue.get_nowait() == loud  # ish tugadi — mikrofon ochiq
+    # Holat juda uzoq band qolsa (javob kelmadi) — mikrofon qayta ochiladi
+    monkeypatch.setattr(am, "BUSY_HOLD_MAX_S", 0.0)
+    bus.set_state("processing")
+    st._process_chunk(loud)
+    await asyncio.sleep(0)
+    assert st._queue.get_nowait() == loud
+    st.stop()
+
+
+async def test_streamer_not_deaf_when_playback_disabled(fake_sd):
+    bus = EventBus()
+    bus.bind_loop()
+    st = AudioStreamer(bus, make_settings(echo_guard=False))  # playback_enabled=False
+    st.start()
+    st.player.enqueue(b"\x01\x02" * 100)  # ijro o'chiq — navbat hech qachon bo'shamaydi
+    loud = sine_pcm(0.5)
+    st._process_chunk(loud)
+    await asyncio.sleep(0)
+    assert st._queue.get_nowait() == loud  # mikrofon bostirilmaydi
+    st.player.clear()
+    st.stop()
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        " “AIzaSyA1b2C3d4E5f6G7h8I9j0KlMnOpQrStUvW” ",
+        "GEMINI_API_KEY=AIzaSyA1b2C3d4E5f6G7h8I9j0KlMnOpQrStUvW",
+        "\u200bAIzaSyA1b2C3d4E5f6G7h8I9j0KlMnOpQrStUvW﻿ ",
+        "'AIzaSyA1b2C3d4E5f6G7h8I9j0KlMnOpQrStUvW'\n",
+    ],
+)
+def test_validate_api_key_cleans_copy_paste(raw):
+    from nexus.config import validate_api_key
+
+    assert validate_api_key(raw) == "AIzaSyA1b2C3d4E5f6G7h8I9j0KlMnOpQrStUvW"
+
+
+def test_validate_api_key_error_names_bad_char_not_key():
+    from nexus.config import validate_api_key
+
+    key = "AIzaSyA1b2C3d4E5f6G7h8I9j0KlMnOpQrStUvW"
+    with pytest.raises(ValueError) as ei:
+        validate_api_key(key[:15] + "#" + key[15:])
+    assert "'#'" in str(ei.value) and "16-o'rinda" in str(ei.value) and key not in str(ei.value)
+    with pytest.raises(ValueError, match="qisqa"):
+        validate_api_key("AIzaSy123")
+
+
+# ---------------------------------------------------------------------------
+# "Ba'zan ishlamay qoladi" — kutish oynasi, osilgan ijro, osilgan holat
+# ---------------------------------------------------------------------------
+async def test_follow_up_judged_by_speech_start_not_transcript_arrival():
+    client, _bus, _reg, audio = make_client()
+    client.wake.set_mode("name")
+    client.wake.follow_up_s = 8.0
+    client.wake.question_follow_up_s = 8.0
+    client.wake._called_at = time.monotonic() - 10  # javob 10 s oldin tugagan
+    audio.speech_started_at = time.monotonic() - 3  # gap oynaning 7-soniyasida boshlangan
+    client._handle_server_content(_sc(input_transcription=SimpleNamespace(text="Chrome och", finished=True)))
+    assert client._addressed is True  # matn oyna yopilgach kelgan bo'lsa ham qabul qilinadi
+
+
+async def test_question_reply_opens_longer_window():
+    client, _bus, _reg, _audio = make_client()
+    client.wake.set_mode("name")
+    client.wake.follow_up_s = 8.0
+    client._handle_server_content(_sc(input_transcription=SimpleNamespace(text="Nexus", finished=True)))
+    client._handle_server_content(_sc(output_transcription=SimpleNamespace(text="Labbay, sizni eshitaman.")))
+    client._handle_server_content(_sc(turn_complete=True))
+    client.wake._called_at = time.monotonic() - 12  # 12 s o'yladi
+    client._handle_server_content(_sc(input_transcription=SimpleNamespace(text="Safarini och", finished=True)))
+    assert client._addressed is True  # savoldan keyin 15 s oyna
+    client.wake.expect_answer(False)
+    client.wake._called_at = time.monotonic() - 12
+    assert client.wake.should_act("boshqa gap") is False  # oddiy javobdan keyin — 8 s
+
+
+async def test_watchdog_releases_stuck_processing(monkeypatch):
+    from nexus import gemini_live_client as glc
+
+    client, bus, _reg, _audio = make_client()
+    bus.set_state("processing")
+    client._turn_locked = True
+    client.tick()
+    assert bus.state == "processing"  # hali erta
+    monkeypatch.setattr(glc, "STUCK_STATE_S", 0.0)
+    client.tick()
+    assert bus.state == "idle" and client._turn_locked is False
+
+
+def test_player_arms_stalled_short_reply(monkeypatch):
+    import nexus.audio_streamer as am
+
+    p = AudioPlayer(sample_rate=1000, enabled=False, prebuffer_ms=500)
+    p.enqueue(b"\x01\x02" * 50)  # 100 ms < 500 ms prebuffer, generation_complete kelmadi
+    out = bytearray(40)
+    p._callback(out, 20, None, None)
+    assert p.pending_bytes() == 100 and not p.armed  # hali kutadi
+    monkeypatch.setattr(am, "STALL_ARM_S", 0.0)
+    p._callback(out, 20, None, None)
+    assert p.pending_bytes() == 60  # yangi audio kelmayapti — bori ijro etiladi
