@@ -35,7 +35,7 @@ async def main() -> int:
     check("registry WindowsController", isinstance(reg.mac, WindowsController), type(reg.mac).__name__)
     core = {n for n in names if n in SUPPORTED_TOOLS}
     check("asosiy toollar e'lon qilingan", core == SUPPORTED_TOOLS, sorted(SUPPORTED_TOOLS - core))
-    check("macOS-only toollar yashirin", "set_brightness" not in names and "type_text" not in names, len(names))
+    check("macOS-only toollar yashirin", "set_brightness" not in names and "browser_click_button" not in names, len(names))
     check("file_actions yuklangan", "nexus.file_actions" in reg.extensions, reg.extensions)
 
     m = reg.mac
@@ -87,6 +87,18 @@ async def main() -> int:
         await asyncio.sleep(0.5)
         ok, out = await m.get_clipboard()
         check("type_text + hotkey (Notepad orqali)", ok1 and ok2 and out.strip() == typed, out)
+
+        # --- 2-bosqich: ekran (UI Automation) — Notepad hali ochiq ---
+        res = await reg.execute("read_screen_text", {})
+        check("read_screen_text (UIA)", res.get("ok") and "кирилл" in res.get("output", ""), res.get("output"))
+        res = await reg.execute("list_ui_elements", {})
+        check("list_ui_elements", res.get("ok") and '"count": 0' not in res.get("output", ""), res.get("output"))
+        res = await reg.execute("get_focused_element", {})
+        check("get_focused_element", res.get("ok"), res.get("output"))
+        from nexus.windows_screen import capture_window_jpeg
+
+        jpeg, app = await asyncio.to_thread(capture_window_jpeg)
+        check("oyna skrinshoti (Pillow)", jpeg[:2] == b"\xff\xd8" and len(jpeg) > 1000, f"{app}: {len(jpeg)} bayt")
     finally:
         notepad.kill()
     ok, out = await m.press_hotkey("ctrl+nokey")

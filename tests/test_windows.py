@@ -23,8 +23,10 @@ def test_registry_on_windows_filters_declarations(monkeypatch):
     assert isinstance(reg.tabs, wa.WindowsBrowserController)
     assert wa.SUPPORTED_TOOLS <= names
     assert "set_brightness" not in names and "browser_click_button" not in names
-    assert set(reg.extensions) <= wa.SUPPORTED_EXTENSIONS
-    assert not any(n.startswith(("read_screen", "ax_")) for n in names)
+    assert reg.extensions == list(wa.WINDOWS_EXTENSION_MODULES)
+    # ekran toollari macOS modullaridan emas, windows_screen'dan
+    assert {"read_screen_text", "click_ui_element", "look_at_screen"} <= names
+    assert "UI Automation" in next(d for d in reg.declarations() if d["name"] == "read_screen_text")["description"]
 
 
 def test_registry_on_macos_keeps_all(monkeypatch):
@@ -243,3 +245,85 @@ async def test_type_text_and_hotkey_use_sendinput(monkeypatch):
     assert ok and len(sent) == 3
     ok, out = await c.press_hotkey("ctrl+")
     assert not ok and len(sent) == 3
+
+
+# ---------------------------------------------------------------------------
+# 2-bosqich: ekran (UI Automation) — soxta boshqaruv elementlari bilan
+# ---------------------------------------------------------------------------
+from types import SimpleNamespace
+
+from nexus import windows_screen as ws
+
+
+def _ctrl(role, name, rect=(10, 20, 110, 60), offscreen=False, **kw):
+    left, top, right, bottom = rect
+    return SimpleNamespace(
+        ControlTypeName=role,
+        Name=name,
+        IsOffscreen=offscreen,
+        BoundingRectangle=SimpleNamespace(left=left, top=top, right=right, bottom=bottom),
+        HelpText=kw.get("help", ""),
+        AutomationId="",
+        GetValuePattern=lambda: SimpleNamespace(Value=kw["value"]) if "value" in kw else None,
+        GetTextPattern=lambda: None,
+    )
+
+
+def test_collect_elements_filters_and_dedupes():
+    controls = [
+        _ctrl("ButtonControl", "Saqlash"),
+        _ctrl("ButtonControl", "Saqlash"),  # dublikat
+        _ctrl("ButtonControl", "Yashirin", offscreen=True),
+        _ctrl("TextControl", "Faqat matn"),
+        _ctrl("ButtonControl", ""),
+        _ctrl("EditControl", "", help="Qidiruv"),
+        _ctrl("HyperlinkControl", "Bekor", rect=(0, 0, 0, 0)),  # o'lchamsiz
+    ]
+    els = ws.collect_elements(controls)
+    assert [(e.index, e.role, e.name) for e in els] == [(1, "ButtonControl", "Saqlash"), (2, "EditControl", "Qidiruv")]
+    assert els[0].center == (60, 40)
+    assert els[0].as_dict() == {"n": 1, "role": "tugma", "label": "Saqlash", "x": 60, "y": 40}
+    assert [e.name for e in ws.collect_elements(controls, "qidir")] == ["Qidiruv"]
+
+
+def test_find_by_label_priority():
+    els = ws.collect_elements(
+        [_ctrl("ButtonControl", n, rect=(i, 0, i + 10, 10)) for i, n in enumerate(["Save as", "Save", "Autosave"])]
+    )
+    assert [e.name for e in ws.find_by_label(els, "save")] == ["Save"]
+    assert [e.name for e in ws.find_by_label(els, "sav")] == ["Save as", "Save"]
+    assert [e.name for e in ws.find_by_label(els, "uto")] == ["Autosave"]
+    assert ws.find_by_label(els, "  ") == []
+
+
+def test_collect_text_uses_values_and_limit():
+    controls = [
+        _ctrl("TitleBarControl", "Hujjat - Notepad"),
+        _ctrl("EditControl", "Matn tahriri", value="Salom dunyo"),
+        _ctrl("TextControl", "Salom dunyo"),  # takror
+        _ctrl("ButtonControl", "Yopish", offscreen=True),
+    ]
+    assert ws.collect_text(controls) == "Hujjat - Notepad\nSalom dunyo\nMatn tahriri"
+    assert len(ws.collect_text(controls, limit=10)) == 10
+
+
+async def test_screen_tools_refuse_off_windows(monkeypatch):
+    monkeypatch.setattr(ws.sys, "platform", "darwin")
+    res = await ws.read_screen_text({})
+    assert not res["ok"] and "Windows" in res["output"]
+
+
+async def test_read_screen_text_falls_back_to_ocr(monkeypatch):
+    monkeypatch.setattr(ws.sys, "platform", "win32")
+    monkeypatch.setattr(ws, "_text_sync", lambda limit: ("Telegram", ""))
+
+    async def fake_gemini(prompt):
+        return {"ok": True, "output": "ekrandagi matn"}
+
+    monkeypatch.setattr(ws, "_ask_gemini", fake_gemini)
+    res = await ws.read_screen_text({})
+    assert res["ok"] and res["source"] == "ocr" and res["output"] == "ekrandagi matn"
+
+
+def test_windows_screen_declarations_have_handlers():
+    assert {d["name"] for d in ws.TOOL_DECLARATIONS} == set(ws.HANDLERS)

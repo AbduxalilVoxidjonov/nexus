@@ -17,7 +17,7 @@ hiddenimports += collect_submodules('google.genai')
 
 datas = [('ui', 'ui'), ('.env.example', '.')]
 binaries = []
-for pkg in ('webview', '_sounddevice_data'):
+for pkg in ('webview', '_sounddevice_data', 'uiautomation', 'comtypes'):
     d, b, h = collect_all(pkg)
     datas += d
     binaries += b

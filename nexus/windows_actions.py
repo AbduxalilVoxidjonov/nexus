@@ -78,8 +78,10 @@ SUPPORTED_TOOLS = frozenset(
         "run_terminal_command",
     }
 )
-# Windows'da ishlaydigan kengaytma modullari (qolganlari pyobjc/AppleScript'ga bog'liq)
-SUPPORTED_EXTENSIONS = frozenset({"nexus.file_actions", "nexus.web_answer"})
+# Windows'da yuklanadigan kengaytma modullari, tartib bilan (ax_actions/screen_reader o'rnini
+# windows_screen egallaydi — tool nomlari bir xil)
+WINDOWS_EXTENSION_MODULES: tuple[str, ...] = ("nexus.file_actions", "nexus.web_answer", "nexus.windows_screen")
+SUPPORTED_EXTENSIONS = frozenset(WINDOWS_EXTENSION_MODULES)
 
 # Virtual klavish kodlari (winuser.h)
 VK_VOLUME_MUTE = 0xAD

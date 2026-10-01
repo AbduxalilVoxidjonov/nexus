@@ -66,9 +66,9 @@
     "semantic_hash": ""
   },
   "nexus/macos_actions.py": {
-    "mtime": 1790845053.266919,
-    "seen": 1790845260.543778,
-    "ast_hash": "467d8f05ee6fdc486927825d93809b62",
+    "mtime": 1790845557.9183474,
+    "seen": 1790845685.751075,
+    "ast_hash": "51a9f179f8c099d98636abdfeff187c0",
     "semantic_hash": ""
   },
   "nexus/main.py": {
@@ -276,21 +276,21 @@
     "semantic_hash": ""
   },
   "nexus/windows_actions.py": {
-    "mtime": 1790845136.8661094,
-    "seen": 1790845260.543782,
-    "ast_hash": "51e7028eb9dbad66fbb9c92ac591099d",
+    "mtime": 1790845619.1153064,
+    "seen": 1790845685.75108,
+    "ast_hash": "0925d97e8db71ba234d49081f994bce7",
     "semantic_hash": ""
   },
   "scripts/windows_smoke.py": {
-    "mtime": 1790845441.4546828,
-    "seen": 1790845465.974659,
-    "ast_hash": "e0a4cb46b6ed5ad4afa920475f0f5a15",
+    "mtime": 1790845659.674159,
+    "seen": 1790845685.751083,
+    "ast_hash": "d4ef6bcec1899772467ef66ae5ac6059",
     "semantic_hash": ""
   },
   "tests/test_windows.py": {
-    "mtime": 1790845229.7723017,
-    "seen": 1790845260.5437891,
-    "ast_hash": "0c63881ae51936a3aec4ef81e2b1569a",
+    "mtime": 1790845684.864359,
+    "seen": 1790845685.7510881,
+    "ast_hash": "515db766c9f99c98f573904db3250634",
     "semantic_hash": ""
   },
   ".github/workflows/windows-exe.yml": {
@@ -303,6 +303,12 @@
     "mtime": 1790845418.7300334,
     "seen": 1790845465.9746602,
     "ast_hash": "127d95c365dab7196368615cd3305e29",
+    "semantic_hash": ""
+  },
+  "nexus/windows_input.py": {
+    "mtime": 1790845549.2153325,
+    "seen": 1790845685.75108,
+    "ast_hash": "e7cff529192a4d3083d147cef846bec2",
     "semantic_hash": ""
   }
 }

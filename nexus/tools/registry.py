@@ -154,12 +154,12 @@ class ToolRegistry:
     # Kengaytma modullari
     # ------------------------------------------------------------------
     def _load_extensions(self) -> None:
-        for mod_name in EXTENSION_MODULES:
-            if IS_WINDOWS:
-                from nexus.windows_actions import SUPPORTED_EXTENSIONS
+        modules: list[str] | tuple[str, ...] = EXTENSION_MODULES
+        if IS_WINDOWS:
+            from nexus.windows_actions import WINDOWS_EXTENSION_MODULES
 
-                if mod_name not in SUPPORTED_EXTENSIONS:
-                    continue
+            modules = WINDOWS_EXTENSION_MODULES
+        for mod_name in modules:
             try:
                 mod = importlib.import_module(mod_name)
             except ImportError as e:
