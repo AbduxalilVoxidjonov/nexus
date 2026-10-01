@@ -102,9 +102,9 @@
     "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
   },
   "nexus/tools/registry.py": {
-    "mtime": 1790845832.382832,
-    "seen": 1790845879.83653,
-    "ast_hash": "6ffdaea6c68295feded3a21b1ae40c2e",
+    "mtime": 1790846036.6797864,
+    "seen": 1790846114.8852859,
+    "ast_hash": "968bb3dfb3527e12f778c280e77a2cbb",
     "semantic_hash": ""
   },
   "nexus/tools/schemas.py": {
@@ -174,9 +174,9 @@
     "semantic_hash": ""
   },
   "tests/test_extensions.py": {
-    "mtime": 1790845422.617348,
-    "seen": 1790845465.9746618,
-    "ast_hash": "be527abbb4db83be86d439e33b95e7fe",
+    "mtime": 1790846086.8827152,
+    "seen": 1790846114.8852942,
+    "ast_hash": "f3608b753cb50dd9105417577d1379f7",
     "semantic_hash": ""
   },
   "tests/test_safety.py": {
@@ -276,21 +276,21 @@
     "semantic_hash": ""
   },
   "nexus/windows_actions.py": {
-    "mtime": 1790845832.3827286,
-    "seen": 1790845879.8365319,
-    "ast_hash": "11db2b645b0471d3ca997e545d48de9a",
+    "mtime": 1790846068.0438287,
+    "seen": 1790846114.885288,
+    "ast_hash": "f84eb506fedf72f6b2ebb426a2aeb094",
     "semantic_hash": ""
   },
   "scripts/windows_smoke.py": {
-    "mtime": 1790845857.3949685,
-    "seen": 1790845879.8365362,
-    "ast_hash": "2904d1251fdbae490dbc0759f523080c",
+    "mtime": 1790846113.9014459,
+    "seen": 1790846114.885292,
+    "ast_hash": "09a77649ffba01af8dae05a25d289ca7",
     "semantic_hash": ""
   },
   "tests/test_windows.py": {
-    "mtime": 1790845862.3940592,
-    "seen": 1790845879.836541,
-    "ast_hash": "fae4ea3a3f24d123010a8502f75fc46d",
+    "mtime": 1790846086.8584433,
+    "seen": 1790846114.8852968,
+    "ast_hash": "7bbaf036cd5e8039a53a8a1b2aeed1a0",
     "semantic_hash": ""
   },
   ".github/workflows/windows-exe.yml": {
@@ -315,6 +315,12 @@
     "mtime": 1790845878.9021819,
     "seen": 1790845879.836533,
     "ast_hash": "fcd4b38b601b1fe0c176b14e4787a525",
+    "semantic_hash": ""
+  },
+  "nexus/windows_browser.py": {
+    "mtime": 1790846081.5187232,
+    "seen": 1790846114.885289,
+    "ast_hash": "a9f3ee52da89e01a69266886c936cf69",
     "semantic_hash": ""
   }
 }

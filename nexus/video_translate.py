@@ -47,6 +47,7 @@ import logging
 import os
 import re
 import shutil
+import sys
 import tempfile
 import time
 from collections import deque
@@ -85,6 +86,10 @@ MAX_LAG_S = 2.0  # tarjima videodan shuncha orqada qolsa — video bir zum pauza
 LATE_BUFFER_S = 0.5  # navbatdagi tarjima tayyor emas, video esa shuncha o'tib ketdi — video buferlash uchun pauza
 TRANSCRIPT_PREFIX = "[Tarjima] "
 EXTRA_BIN_DIRS = ("/opt/homebrew/bin", "/usr/local/bin")
+IS_WINDOWS = sys.platform == "win32"
+# Windows: oynasiz .exe'dan ffmpeg/yt-dlp chaqirilganda konsol oynasi chiqmasin
+NO_WINDOW: dict[str, Any] = {"creationflags": 0x08000000} if IS_WINDOWS else {}
+INSTALL_HINT = "winget install yt-dlp.yt-dlp Gyan.FFmpeg" if IS_WINDOWS else "brew install yt-dlp ffmpeg"
 
 LANG_NAMES = {"uz": "Uzbek (Latin script)", "ru": "Russian", "en": "English", "tr": "Turkish", "kk": "Kazakh"}
 
@@ -337,6 +342,7 @@ async def time_stretch(ffmpeg: str, pcm: bytes, rate: int, tempo: float) -> byte
             ffmpeg, "-hide_banner", "-loglevel", "error", *fmt, "-i", "pipe:0",
             "-filter:a", f"atempo={tempo:.3f}", *fmt, "pipe:1",
             stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL,
+            **NO_WINDOW,
         )
         out, _ = await asyncio.wait_for(proc.communicate(pcm), timeout=5.0)
     except (OSError, TimeoutError) as e:
@@ -466,7 +472,7 @@ class VideoTranslator:
         ffmpeg = find_binary("ffmpeg", "FFMPEG_PATH")
         if not ytdlp or not ffmpeg:
             missing = ", ".join(n for n, p in (("yt-dlp", ytdlp), ("ffmpeg", ffmpeg)) if not p)
-            return {"ok": False, "output": "", "error": f"O'rnatilmagan: {missing} (brew install yt-dlp ffmpeg)"}
+            return {"ok": False, "output": "", "error": f"O'rnatilmagan: {missing} ({INSTALL_HINT})"}
         if self.settings is None:
             from nexus.config import settings
 
@@ -526,7 +532,7 @@ class VideoTranslator:
         try:
             proc = await asyncio.create_subprocess_exec(
                 *build_ytdlp_cmd(self._ytdlp, watch_url(self.video_id), self._tmpdir),
-                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, **NO_WINDOW,
             )
         except OSError as e:
             return False, f"yt-dlp ishga tushmadi: {e}"
@@ -548,6 +554,10 @@ class VideoTranslator:
 
     async def _js(self, js: str) -> tuple[bool, str]:
         """JS ni video ochilgan tabda bajaradi (faol tab emas — foydalanuvchi boshqa tabga o'tishi mumkin)."""
+        if IS_WINDOWS:  # video Nexus'ning WebView2 oynasida
+            from nexus.windows_video import host
+
+            return await host.eval(js)
         from nexus.browser_actions import BROWSERS
         from nexus.macos_actions import run_applescript
 
@@ -559,6 +569,14 @@ class VideoTranslator:
         return (False, "Video tabi topilmadi") if out.strip() == NO_TAB else (True, out)
 
     async def _open_video(self) -> bool:
+        if IS_WINDOWS:
+            from nexus.windows_video import host
+
+            ok, out = await host.open(watch_url(self.video_id))
+            if not ok:
+                self._log(out, "warn")
+                return False
+            return await self._setup_player()
         from nexus.browser_actions import BrowserController
         from nexus.macos_actions import run_applescript
 
@@ -577,6 +595,9 @@ class VideoTranslator:
                 'tell application "Google Chrome" to return (id of active tab of front window) as text'
             )
             self._tab_id = out.strip() if ok and out.strip().isdigit() else None
+        return await self._setup_player()
+
+    async def _setup_player(self) -> bool:
         setup = player_setup_js(0.0, play=False)  # audio yuklanguncha jim pauza
         deadline = time.monotonic() + VIDEO_WAIT_S
         while time.monotonic() < deadline:
@@ -584,8 +605,8 @@ class VideoTranslator:
             ok, out = await self._js(setup)
             if ok and out.strip() == "ok":
                 return True
-        self._log("Brauzerda video pleyer topilmadi (Chrome: View → Developer → Allow JavaScript from Apple Events)",
-                  "warn")
+        hint = "" if IS_WINDOWS else " (Chrome: View → Developer → Allow JavaScript from Apple Events)"
+        self._log(f"Video pleyer topilmadi{hint}", "warn")
         return False
 
     # --- asosiy sikl ---
@@ -676,7 +697,7 @@ class VideoTranslator:
         self._eof = False
         self._proc = await asyncio.create_subprocess_exec(
             *build_ffmpeg_cmd(self._ffmpeg, self._audio_path, start_s),
-            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL,
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL, **NO_WINDOW,
         )
         return self._proc
 

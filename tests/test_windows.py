@@ -440,3 +440,55 @@ def test_windows_declarations_adapted(monkeypatch):
         "safari",
         "chrome",
     ]
+
+
+# ---------------------------------------------------------------------------
+# 2-bosqich: video tarjima (Nexus WebView2 oynasida)
+# ---------------------------------------------------------------------------
+from nexus import video_translate as vt
+from nexus import windows_video as wv
+
+
+async def test_video_host_requires_gui(monkeypatch):
+    monkeypatch.setattr(wv, "_gui_ready", wv.threading.Event())
+    ok, out = await wv.WebViewVideoHost().open("https://youtu.be/x")
+    assert not ok and "desktop" in out
+
+
+async def test_video_host_eval_without_window():
+    ok, out = await wv.WebViewVideoHost().eval("1+1")
+    assert not ok and "yopilgan" in out
+
+
+async def test_video_host_eval_returns_string(monkeypatch):
+    host = wv.WebViewVideoHost()
+    host.window = SimpleNamespace(evaluate_js=lambda js: '{"t": 1.5}')
+    assert await host.eval("x") == (True, '{"t": 1.5}')
+    host.window = SimpleNamespace(evaluate_js=lambda js: None)
+    assert await host.eval("x") == (True, "")
+
+
+async def test_translator_js_goes_to_webview_on_windows(monkeypatch):
+    calls: list[str] = []
+
+    async def fake_eval(js):
+        calls.append(js)
+        return True, "ok"
+
+    monkeypatch.setattr(vt, "IS_WINDOWS", True)
+    monkeypatch.setattr(wv.host, "eval", fake_eval)
+    assert await vt.VideoTranslator()._js("return 1") == (True, "ok")
+    assert calls == ["return 1"]
+
+
+def test_translate_video_decl_on_windows():
+    decl = next(d for d in vt.TOOL_DECLARATIONS if d["name"] == "translate_video")
+    out = wa.adapt_declaration(decl)
+    assert "browser" not in out["parameters"]["properties"]
+    assert "Nexus video window" in out["description"]
+    assert "browser" in decl["parameters"]["properties"]  # asl nusxa o'zgarmagan
+
+
+def test_video_install_hint_and_no_window_flags(monkeypatch):
+    assert ("winget" in vt.INSTALL_HINT) == (sys.platform == "win32")
+    assert ("creationflags" in vt.NO_WINDOW) == (sys.platform == "win32")

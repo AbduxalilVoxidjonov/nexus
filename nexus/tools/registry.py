@@ -134,11 +134,15 @@ class ToolRegistry:
         self._handlers: dict[str, Handler] = self._build_handlers()
         if IS_WINDOWS:
             # Windows ekvivalenti hali yo'q toollar Gemini'ga e'lon qilinmaydi
-            from nexus.windows_actions import SUPPORTED_TOOLS, adapt_declaration
+            from nexus.windows_actions import SUPPORTED_TOOLS
 
-            self._decls = {k: adapt_declaration(v) for k, v in self._decls.items() if k in SUPPORTED_TOOLS}
+            self._decls = {k: v for k, v in self._decls.items() if k in SUPPORTED_TOOLS}
         self.extensions: list[str] = []
         self._load_extensions()
+        if IS_WINDOWS:
+            from nexus.windows_actions import adapt_declaration
+
+            self._decls = {k: adapt_declaration(v) for k, v in self._decls.items()}
 
         missing = set(self._decls) - set(self._handlers)
         if missing:

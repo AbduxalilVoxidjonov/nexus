@@ -52,9 +52,13 @@ def run_desktop(settings: Settings, options: DesktopOptions) -> int:
         webbrowser.open(url)
         return _wait_headless(runner)
 
-    webview.create_window(WINDOW_TITLE, url, width=1180, height=780, min_size=(820, 560))
+    from nexus.windows_video import mark_gui_ready
+
+    main_window = webview.create_window(WINDOW_TITLE, url, width=1180, height=780, min_size=(820, 560))
+    # Asosiy oyna yopilsa — video oynasi ham yopiladi va ilova tugaydi
+    main_window.events.closed += lambda: [w.destroy() for w in list(webview.windows) if w is not main_window]
     try:
-        webview.start()  # oyna yopilguncha bloklaydi
+        webview.start(mark_gui_ready)  # oyna yopilguncha bloklaydi
     except Exception as e:  # noqa: BLE001 — WebView2 runtime yo'q va h.k.
         log.error("Oyna ochilmadi (%s) — UI brauzerda ochiladi", e)
         webbrowser.open(url)

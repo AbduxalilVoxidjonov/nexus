@@ -92,7 +92,12 @@ SUPPORTED_TOOLS = frozenset(
 )
 # Windows'da yuklanadigan kengaytma modullari, tartib bilan (ax_actions/screen_reader o'rnini
 # windows_screen egallaydi — tool nomlari bir xil)
-WINDOWS_EXTENSION_MODULES: tuple[str, ...] = ("nexus.file_actions", "nexus.web_answer", "nexus.windows_screen")
+WINDOWS_EXTENSION_MODULES: tuple[str, ...] = (
+    "nexus.file_actions",
+    "nexus.web_answer",
+    "nexus.windows_screen",
+    "nexus.video_translate",
+)
 SUPPORTED_EXTENSIONS = frozenset(WINDOWS_EXTENSION_MODULES)
 
 # Virtual klavish kodlari (winuser.h)
@@ -638,6 +643,11 @@ def adapt_declaration(decl: dict[str, Any]) -> dict[str, Any]:
     """Tool deklaratsiyasini Windows'ga moslaydi: brauzer enum'i, macOS so'zlari."""
     props = (decl.get("parameters") or {}).get("properties") or {}
     desc = str(decl.get("description", ""))
+    if decl.get("name") == "translate_video":
+        # Windows'da video Nexus'ning o'z oynasida ochiladi — brauzer tanlanmaydi
+        props = {k: v for k, v in props.items() if k != "browser"}
+        desc = desc.replace("Open a YouTube video in the browser", "Open a YouTube video in a Nexus video window")
+        return {**decl, "description": desc, "parameters": {**decl["parameters"], "properties": props}}
     for old, new in (("Safari or Chrome", "the browser"), ("macOS ", ""), ("Finder", "File Explorer"), ("cmd+", "ctrl+")):
         desc = desc.replace(old, new)
     if "browser" not in props and desc == decl.get("description"):
