@@ -252,6 +252,7 @@ def test_load_extra_env_reads_home_env(monkeypatch: pytest.MonkeyPatch, tmp_path
     from nexus.main import load_extra_env
 
     monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))  # Windows'da Path.home()
     monkeypatch.delenv("NEXUS_TEST_EXTRA", raising=False)
     assert load_extra_env() == []  # fayl yo'q
     envdir = tmp_path / ".nexus"
@@ -270,6 +271,7 @@ def test_config_loads_home_env_into_settings(monkeypatch: pytest.MonkeyPatch, tm
     import nexus.config as cfg
 
     monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))  # Windows'da Path.home()
     monkeypatch.chdir(tmp_path)  # CWD `.env` yo'q
     monkeypatch.setattr(cfg, "_project_env", lambda: None)  # loyiha `.env` i ham chetlab o'tiladi
     monkeypatch.delenv("WAKE_NAME", raising=False)

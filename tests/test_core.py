@@ -1732,7 +1732,8 @@ def test_save_api_key_updates_env_file(tmp_path: Path, monkeypatch):
     out = config.save_api_key("AIzaSyNewKey_abcdefghijklmn", env)
     assert out == env
     assert env.read_text(encoding="utf-8") == "# izoh\nGEMINI_API_KEY=AIzaSyNewKey_abcdefghijklmn\nWAKE_NAME=Nexus\n"
-    assert (env.stat().st_mode & 0o777) == 0o600
+    if sys.platform != "win32":  # Windows'da POSIX ruxsat bitlari yo'q
+        assert (env.stat().st_mode & 0o777) == 0o600
     assert os.environ["GEMINI_API_KEY"] == "AIzaSyNewKey_abcdefghijklmn"
     fresh = tmp_path / "sub" / ".env"
     config.save_api_key("AIzaSyNewKey_abcdefghijklmn", fresh)

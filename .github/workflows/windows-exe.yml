@@ -19,8 +19,6 @@ jobs:
         run: uv sync --extra dev
 
       - name: Testlar
-        # Eski testlarning bir qismi macOS'ga xos — hozircha .exe yig'ilishini to'xtatmaydi
-        continue-on-error: true
         run: uv run pytest -q -p no:cacheprovider
 
       - name: Windows smoke testi

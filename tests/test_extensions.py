@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from nexus import ax_actions as ax
+from tests.conftest import POSIX_ONLY
 from nexus import file_actions as fa
 
 VALID_TYPES = {"OBJECT", "STRING", "INTEGER", "NUMBER", "BOOLEAN", "ARRAY"}
@@ -78,7 +79,7 @@ async def test_handlers_are_async_and_return_contract(mod):
         ("home", Path.home()),
         ("~/Music", Path.home() / "Music"),
         ('"~/Music"', Path.home() / "Music"),
-        ("/tmp/x.txt", Path("/tmp/x.txt")),
+        pytest.param("/tmp/x.txt", Path("/tmp/x.txt"), marks=POSIX_ONLY),
     ],
 )
 def test_resolve_path_aliases(raw, expected):
@@ -115,6 +116,7 @@ def test_outside_home_rejected(path):
     assert not ok
 
 
+@POSIX_ONLY
 def test_allowed_paths():
     assert fa.path_allowed(Path.home() / "Desktop" / "hisobot.txt")[0]
     assert fa.path_allowed(Path("/tmp/nexus_test.txt"))[0]
@@ -182,6 +184,7 @@ async def test_read_file_truncation_and_redaction(sandbox):
     assert res["ok"] is False and "topilmadi" in res["output"]
 
 
+@POSIX_ONLY
 async def test_delete_file_moves_to_trash_via_finder(sandbox, monkeypatch):
     target = sandbox / "del.txt"
     target.write_text("x")

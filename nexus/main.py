@@ -421,7 +421,18 @@ def desktop_mode(args: argparse.Namespace) -> bool:
     return sys.platform in ("darwin", "win32")
 
 
+def _utf8_stdio() -> None:
+    """Windows konsoli/pipe cp1252 bo'lishi mumkin — o'zbekcha belgilar (ʼ, —) print'da yiqitmasin."""
+    for stream in (sys.stdout, sys.stderr):
+        if stream is not None and hasattr(stream, "reconfigure"):
+            try:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+            except (OSError, ValueError):
+                pass
+
+
 def cli(argv: list[str] | None = None) -> int:
+    _utf8_stdio()
     args = build_parser().parse_args(argv)
     # `.env` manbalari `nexus.config` import vaqtida yuklangan; singleton'ni ishlatamiz —
     # web_answer / macos_actions ham aynan shu obyektni o'qiydi.

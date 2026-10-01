@@ -261,13 +261,17 @@ class UIServer:
         host, port = self.settings.ui_host, self.settings.ui_port
         family = socket.AF_INET6 if ":" in host else socket.AF_INET
         sock = socket.socket(family, socket.SOCK_STREAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+            # Windows: SO_REUSEADDR band portni ham "egallab" oladi — ikkinchi Nexus nusxasi xato bersin
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        else:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
             sock.bind((host, port))
             sock.listen(128)
         except OSError as e:
             sock.close()
-            if e.errno in (errno.EADDRINUSE, errno.EACCES):
+            if e.errno in (errno.EADDRINUSE, errno.EACCES, getattr(errno, "WSAEACCES", errno.EACCES)):
                 log.error(
                     "UI porti band: %s:%d — boshqa Nexus nusxasi ishlayotgan bo'lishi mumkin. "
                     "UI_PORT ni o'zgartiring yoki eski jarayonni to'xtating (lsof -i :%d).",

@@ -1,6 +1,7 @@
 """video_translate: toza funksiyalar, sinxron soat, tool ro'yxatga olinishi, echo guard ilgagi."""
 from __future__ import annotations
 
+import os
 from types import SimpleNamespace
 
 import pytest
@@ -127,7 +128,7 @@ def test_player_setup_js() -> None:
 def test_build_ytdlp_cmd() -> None:
     cmd = vt.build_ytdlp_cmd("yt-dlp", "https://youtu.be/x", "/tmp/d")
     assert "after_move:filepath" in cmd and "!is_live" in cmd
-    assert cmd[cmd.index("-o") + 1].startswith("/tmp/d/")
+    assert cmd[cmd.index("-o") + 1].startswith(os.path.join("/tmp/d", ""))
 
 
 def test_segmenter_cuts_on_quiet_after_min() -> None:

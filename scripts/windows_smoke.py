@@ -25,6 +25,7 @@ def check(name: str, ok: bool, detail: object = "") -> None:
 
 async def main() -> int:
     assert sys.platform == "win32", "Bu skript faqat Windows uchun"
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     from nexus.config import settings
     from nexus.tools.registry import ToolRegistry
     from nexus.windows_actions import SUPPORTED_TOOLS, WindowsController

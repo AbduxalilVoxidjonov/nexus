@@ -54,10 +54,10 @@
     "semantic_hash": ""
   },
   "nexus/file_actions.py": {
-    "mtime": 1790011139.8631477,
-    "seen": 1790244931.416877,
-    "ast_hash": "7a53765f7b7ccb4798d00817744c682c",
-    "semantic_hash": "7a53765f7b7ccb4798d00817744c682c"
+    "mtime": 1790845090.217118,
+    "seen": 1790845260.543777,
+    "ast_hash": "985e1af5896e9bcaa224cc31a3838815",
+    "semantic_hash": ""
   },
   "nexus/gemini_live_client.py": {
     "mtime": 1790790943.6887906,
@@ -66,22 +66,22 @@
     "semantic_hash": ""
   },
   "nexus/macos_actions.py": {
-    "mtime": 1790011228.38217,
-    "seen": 1790244931.416877,
-    "ast_hash": "ec7d6a41d66679c625bc2b1944fb6736",
-    "semantic_hash": "ec7d6a41d66679c625bc2b1944fb6736"
+    "mtime": 1790845053.266919,
+    "seen": 1790845260.543778,
+    "ast_hash": "467d8f05ee6fdc486927825d93809b62",
+    "semantic_hash": ""
   },
   "nexus/main.py": {
-    "mtime": 1790791510.595281,
-    "seen": 1790791656.5265348,
-    "ast_hash": "dfb6b1b096c28544acae1477829cdbc9",
+    "mtime": 1790845130.9566627,
+    "seen": 1790845260.543778,
+    "ast_hash": "24342f296235bbf6f706d3a3c7c3f5c0",
     "semantic_hash": ""
   },
   "nexus/safety.py": {
-    "mtime": 1790011228.381277,
-    "seen": 1790244931.416878,
-    "ast_hash": "c8f70db2cdee97428732fa6dac3d9fea",
-    "semantic_hash": "c8f70db2cdee97428732fa6dac3d9fea"
+    "mtime": 1790845087.0761178,
+    "seen": 1790845260.5437791,
+    "ast_hash": "7eb5e20ef61bda494b77e84a2cd6b03d",
+    "semantic_hash": ""
   },
   "nexus/screen_reader.py": {
     "mtime": 1790036241.3981416,
@@ -102,15 +102,15 @@
     "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
   },
   "nexus/tools/registry.py": {
-    "mtime": 1790791612.283151,
-    "seen": 1790791656.526538,
-    "ast_hash": "3c6f26a6a381c5872f4e5462bd55f91d",
+    "mtime": 1790845039.2705595,
+    "seen": 1790845260.54378,
+    "ast_hash": "1bbc1b93d9ed7b424bc61c3e509a2e9e",
     "semantic_hash": ""
   },
   "nexus/tools/schemas.py": {
-    "mtime": 1790791510.5959382,
-    "seen": 1790791656.526538,
-    "ast_hash": "2ffbfcc7cc7c9f2ca0b748bdf4749e9c",
+    "mtime": 1790845101.3684976,
+    "seen": 1790845260.543781,
+    "ast_hash": "125a4c02565753115eb5bb0be6e38940",
     "semantic_hash": ""
   },
   "nexus/wake.py": {
@@ -126,10 +126,10 @@
     "semantic_hash": "b663fb97fbc84b77655483fe9df08dc7"
   },
   "pyproject.toml": {
-    "mtime": 1790035528.941146,
-    "seen": 1790244931.4168801,
-    "ast_hash": "90b6e44b550e7eb31888cd5b529149b5",
-    "semantic_hash": "90b6e44b550e7eb31888cd5b529149b5"
+    "mtime": 1790845160.6625364,
+    "seen": 1790845260.543783,
+    "ast_hash": "50fa2f1c4a02ed80d0876a04f82eca64",
+    "semantic_hash": ""
   },
   "scripts/benchmark_live.py": {
     "mtime": 1790017372.1908143,
@@ -267,6 +267,36 @@
     "mtime": 1790244931.454675,
     "seen": 1790424423.769823,
     "ast_hash": "82efb97a359f5c7290bf2513d14686be",
+    "semantic_hash": ""
+  },
+  "nexus/desktop_win.py": {
+    "mtime": 1790845130.9418292,
+    "seen": 1790845260.543775,
+    "ast_hash": "ff3c43cc75bc9e13c94d70997f89598a",
+    "semantic_hash": ""
+  },
+  "nexus/windows_actions.py": {
+    "mtime": 1790845136.8661094,
+    "seen": 1790845260.543782,
+    "ast_hash": "51e7028eb9dbad66fbb9c92ac591099d",
+    "semantic_hash": ""
+  },
+  "scripts/windows_smoke.py": {
+    "mtime": 1790845194.473459,
+    "seen": 1790845260.5437849,
+    "ast_hash": "e3a3fe90dbedcc5fdf9cd733c53ae06d",
+    "semantic_hash": ""
+  },
+  "tests/test_windows.py": {
+    "mtime": 1790845229.7723017,
+    "seen": 1790845260.5437891,
+    "ast_hash": "0c63881ae51936a3aec4ef81e2b1569a",
+    "semantic_hash": ""
+  },
+  ".github/workflows/windows-exe.yml": {
+    "mtime": 1790845249.0567956,
+    "seen": 1790845260.54379,
+    "ast_hash": "0b7c06b9a06c9449c4a75b50dea50958",
     "semantic_hash": ""
   }
 }
