@@ -13,7 +13,9 @@ import ctypes
 import logging
 import os
 import platform
+import shlex
 import shutil
+import subprocess
 import time
 import webbrowser
 from datetime import datetime
@@ -24,8 +26,11 @@ from nexus.browser_actions import normalize_url
 from nexus.config import settings
 from nexus.macos_actions import (
     APP_CACHE_TTL,
+    MAX_OUTPUT_CHARS,
+    CommandGuard,
     MacOSController,
     Result,
+    Verdict,
     _clamp,
     _fmt_uptime,
     _summarize_info,
@@ -38,7 +43,7 @@ from nexus.safety import redact_secrets
 
 log = logging.getLogger("nexus.windows")
 
-# Windows'da ishlaydigan asosiy (schemas.py) toollar. Qolganlari 2-bosqichda.
+# Windows'da ishlaydigan asosiy (schemas.py) toollar
 SUPPORTED_TOOLS = frozenset(
     {
         "launch_app",
@@ -68,6 +73,9 @@ SUPPORTED_TOOLS = frozenset(
         "stop_conversation",
         "browser_open_url",
         "web_search",
+        "type_text",
+        "press_hotkey",
+        "run_terminal_command",
     }
 )
 # Windows'da ishlaydigan kengaytma modullari (qolganlari pyobjc/AppleScript'ga bog'liq)
@@ -152,8 +160,88 @@ async def run_powershell(script: str, timeout: float = 15.0, stdin: bytes | None
     )
 
 
+class WindowsCommandGuard(CommandGuard):
+    """`run_terminal_command` qo'riqchisi — Windows (cmd) buyruqlari uchun.
+
+    Asosiy qoidalar `CommandGuard` dan: shell operatorlari rad etiladi, allowlist — tasdiqsiz,
+    qolgani — tasdiq bilan, taqiqlangan token/yo'l — hech qachon. Windows'ga xos qo'shimchalar:
+    buyruq nomi katta-kichik harfga va `.exe` ga bog'liq emas, `%VAR%` va `^` (cmd escape) taqiqlangan,
+    `\\` li yo'llar buzilmaydi (`shlex` posix=False).
+    """
+
+    ALLOWED_FIRST = frozenset(
+        {
+            "dir", "echo", "type", "where", "whoami", "hostname", "ipconfig", "ping", "tasklist",
+            "systeminfo", "ver", "vol", "tree", "findstr", "find", "git", "curl", "mkdir", "md",
+            "copy", "move", "getmac", "nslookup", "date", "time", "fc",
+        }
+    )
+    FORBIDDEN_TOKENS = CommandGuard.FORBIDDEN_TOKENS | frozenset(
+        {
+            "del", "erase", "rd", "format", "diskpart", "reg", "regedit", "bcdedit", "taskkill", "sc",
+            "net", "net1", "netsh", "schtasks", "at", "powershell", "pwsh", "cmd", "wmic", "cipher",
+            "vssadmin", "takeown", "icacls", "cacls", "attrib", "runas", "mshta", "rundll32", "regsvr32",
+            "certutil", "bitsadmin", "wscript", "cscript", "start", "msiexec", "setx", "wevtutil", "fsutil",
+            "sfc", "dism", "manage-bde", "robocopy", "xcopy", "forfiles", "logoff", "py", "pythonw",
+            "invoke-expression", "iex", "remove-item", "set-executionpolicy", "call", "for", "goto", "set",
+        }
+    )
+    FORBIDDEN_SUBSTRINGS = (*CommandGuard.FORBIDDEN_SUBSTRINGS, "%", "^", "\r")
+    FORBIDDEN_PATH_PARTS = (
+        ".ssh", ".gnupg", ".aws", ".env",
+        "c:\\windows", "c:/windows", "system32", "syswow64",
+        "program files", "programdata", "start menu\\programs\\startup", "start menu/programs/startup",
+        "\\\\", "//",  # tarmoq (UNC) yo'llari
+    )
+    ARG_TOKEN_CHECKED = frozenset({"git", "curl", "where", "findstr", "find", "copy", "move", "dir", "type"})
+    # cmd ichki buyruqlari — alohida .exe yo'q
+    CMD_BUILTINS = frozenset({"dir", "echo", "type", "ver", "vol", "mkdir", "md", "copy", "move", "date", "time"})
+
+    @staticmethod
+    def split(command: str) -> list[str]:
+        argv = [t[1:-1] if len(t) >= 2 and t[0] == t[-1] == '"' else t for t in shlex.split(command, posix=False)]
+        if argv:
+            first = argv[0].lower()
+            argv[0] = first.removesuffix(".exe")
+        return argv
+
+    @staticmethod
+    def argv(command: str) -> list[str]:
+        return [os.path.expanduser(t) if t.startswith("~") else t for t in WindowsCommandGuard.split(command)]
+
+    def _check_specific(self, first: str, rest: list[str]) -> Verdict | None:
+        flags = [t.lower() for t in rest]
+        if first == "ping":
+            if "-t" in flags or "/t" in flags:
+                return "deny", "ping -t (cheksiz) taqiqlangan"
+            for opt in ("-n", "/n"):
+                if opt in flags:
+                    try:
+                        n = int(rest[flags.index(opt) + 1])
+                    except (IndexError, ValueError):
+                        return "deny", "ping -n uchun son kerak"
+                    if n < 1 or n > self.PING_MAX_COUNT:
+                        return "deny", f"ping -n 1..{self.PING_MAX_COUNT} oralig'ida bo'lsin"
+            return None
+        if first in {"date", "time"}:
+            return None if "/t" in flags else ("deny", f"{first} faqat /t bilan (aks holda kiritish kutadi)")
+        if first in {"copy", "move"}:
+            paths = [t for t in rest if not t.startswith("/")]
+            if len(paths) < 2:
+                return "deny", f"{first} uchun manba va manzil kerak"
+            if "/y" in flags:
+                return "confirm", f"{first} /y — mavjud faylni so'ramasdan almashtiradi"
+            return None
+        if first in {"git", "curl"}:
+            return super()._check_specific(first, rest)
+        return None
+
+
 class WindowsController(MacOSController):
     """Windows bilan ishlash: ovoz, media, ilovalar, Explorer, tizim."""
+
+    def __init__(self) -> None:
+        self.guard = WindowsCommandGuard()
 
     # -- ovoz --------------------------------------------------------------
     async def set_volume(self, level: float) -> Result:
@@ -406,10 +494,33 @@ class WindowsController(MacOSController):
         return True, _truncate(redact_secrets(out)) if out else "Bufer bo'sh"
 
     async def type_text(self, text: str, press_enter: bool = False) -> Result:
-        return False, "Windows'da matn terish hali yo'q (2-bosqich)"
+        """Faol oynaga matn teradi (SendInput Unicode — bufer o'zgarmaydi)."""
+        from nexus import windows_input
+
+        if not text:
+            return False, "Matn bo'sh"
+        text = text[: windows_input.MAX_TYPE_CHARS]
+        try:
+            await asyncio.to_thread(windows_input.type_unicode, text)
+            if press_enter:
+                await asyncio.sleep(0.1)
+                await asyncio.to_thread(windows_input.press_enter)
+        except OSError as e:
+            return False, f"Matnni terib bo'lmadi: {e}"
+        msg = f"Matn terildi ({len(text)} belgi)"
+        return True, msg + (" va Enter bosildi" if press_enter else "")
 
     async def press_hotkey(self, keys: str) -> Result:
-        return False, "Windows'da klavish bosish hali yo'q (2-bosqich)"
+        from nexus import windows_input
+
+        try:
+            windows_input.parse_hotkey(keys)
+            await asyncio.to_thread(windows_input.press_combo, keys)
+        except windows_input.HotkeyError as e:
+            return False, str(e)
+        except OSError as e:
+            return False, f"Klavishlarni bosib bo'lmadi: {e}"
+        return True, f"Bosildi: {keys}"
 
     async def take_screenshot(self, target_path: str | None = None) -> Result:
         if target_path:
@@ -479,7 +590,22 @@ class WindowsController(MacOSController):
 
     # -- terminal ----------------------------------------------------------
     async def run_terminal_command(self, command: str, confirmed: bool = False) -> Result:
-        return False, "Windows'da terminal buyruqlari hali yo'q (2-bosqich)"
+        """Buyruqni qo'riqchi orqali `cmd` da bajaradi (UTF-8 kod sahifasi, shell operatorlarisiz)."""
+        if not settings.allow_terminal:
+            return False, "Terminal buyruqlari sozlamalarda o'chirilgan (ALLOW_TERMINAL=false)"
+        verdict, reason = self.guard.check(command)
+        if verdict == "deny":
+            return False, f"Buyruq rad etildi: {reason}"
+        if verdict == "confirm" and not confirmed:
+            return False, f"Tasdiq kerak: {reason}"
+        argv = WindowsCommandGuard.argv(command)
+        # chcp 65001 — chiqish UTF-8 bo'lsin (aks holda OEM kod sahifasi: kirill/o'zbekcha buziladi)
+        line = "chcp 65001>nul & " + subprocess.list2cmdline(argv)
+        ok, out = await run_shell(["cmd", "/d", "/s", "/c", line], timeout=15)
+        out = _truncate(redact_secrets(out), MAX_OUTPUT_CHARS)
+        if ok:
+            return True, out or "(chiqish bo'sh)"
+        return False, out or "Buyruq xato bilan tugadi"
 
     # -- ruxsatlar ---------------------------------------------------------
     async def check_permissions(self) -> dict[str, Any]:
@@ -502,6 +628,7 @@ __all__ = [
     "SUPPORTED_EXTENSIONS",
     "SUPPORTED_TOOLS",
     "WindowsBrowserController",
+    "WindowsCommandGuard",
     "WindowsController",
     "run_powershell",
     "start_menu_apps",

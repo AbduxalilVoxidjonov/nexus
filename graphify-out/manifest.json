@@ -72,9 +72,9 @@
     "semantic_hash": ""
   },
   "nexus/main.py": {
-    "mtime": 1790845130.9566627,
-    "seen": 1790845260.543778,
-    "ast_hash": "24342f296235bbf6f706d3a3c7c3f5c0",
+    "mtime": 1790845441.454552,
+    "seen": 1790845465.9746492,
+    "ast_hash": "a36b22b5d443154d31628a72517973ec",
     "semantic_hash": ""
   },
   "nexus/safety.py": {
@@ -90,10 +90,10 @@
     "semantic_hash": "62a0866bf6cf98a3d0634b48663feb53"
   },
   "nexus/server.py": {
-    "mtime": 1790016384.1074567,
-    "seen": 1790244931.4168792,
-    "ast_hash": "02b4e8f26d2e3eba901dbcf118394904",
-    "semantic_hash": "02b4e8f26d2e3eba901dbcf118394904"
+    "mtime": 1790845394.5821834,
+    "seen": 1790845465.9746509,
+    "ast_hash": "8387c7e08bb27210e9f97bf7d1f850d3",
+    "semantic_hash": ""
   },
   "nexus/tools/__init__.py": {
     "mtime": 1790009100.9932923,
@@ -162,22 +162,22 @@
     "semantic_hash": "66862f14a0be609870025989d345991d"
   },
   "tests/test_core.py": {
-    "mtime": 1790790977.6530957,
-    "seen": 1790791033.152968,
-    "ast_hash": "23cbd8b1828a0840559fee8ff5f7caa7",
+    "mtime": 1790845418.745213,
+    "seen": 1790845465.974661,
+    "ast_hash": "cde017f383ce619b17f7dcf2998a6e2b",
     "semantic_hash": ""
   },
   "tests/test_desktop.py": {
-    "mtime": 1790789308.51477,
-    "seen": 1790789419.409716,
-    "ast_hash": "059a4311b4c15355316668f37018edb1",
+    "mtime": 1790845418.7448933,
+    "seen": 1790845465.974661,
+    "ast_hash": "916650713d96659d43a863c2d1ff7c66",
     "semantic_hash": ""
   },
   "tests/test_extensions.py": {
-    "mtime": 1790036241.3980086,
-    "seen": 1790244931.416883,
-    "ast_hash": "b37e92a03a7135a880753b8673c81838",
-    "semantic_hash": "b37e92a03a7135a880753b8673c81838"
+    "mtime": 1790845422.617348,
+    "seen": 1790845465.9746618,
+    "ast_hash": "be527abbb4db83be86d439e33b95e7fe",
+    "semantic_hash": ""
   },
   "tests/test_safety.py": {
     "mtime": 1790791588.1500685,
@@ -258,9 +258,9 @@
     "semantic_hash": ""
   },
   "tests/test_video_translate.py": {
-    "mtime": 1790443632.127974,
-    "seen": 1790443655.259105,
-    "ast_hash": "b60b2ccf1b32715444fe5a8e34482d39",
+    "mtime": 1790845422.614746,
+    "seen": 1790845465.974665,
+    "ast_hash": "0ac82319fc0a57dd570d206dca83a0aa",
     "semantic_hash": ""
   },
   "CLAUDE.md": {
@@ -282,9 +282,9 @@
     "semantic_hash": ""
   },
   "scripts/windows_smoke.py": {
-    "mtime": 1790845194.473459,
-    "seen": 1790845260.5437849,
-    "ast_hash": "e3a3fe90dbedcc5fdf9cd733c53ae06d",
+    "mtime": 1790845441.4546828,
+    "seen": 1790845465.974659,
+    "ast_hash": "e0a4cb46b6ed5ad4afa920475f0f5a15",
     "semantic_hash": ""
   },
   "tests/test_windows.py": {
@@ -294,9 +294,15 @@
     "semantic_hash": ""
   },
   ".github/workflows/windows-exe.yml": {
-    "mtime": 1790845249.0567956,
-    "seen": 1790845260.54379,
-    "ast_hash": "0b7c06b9a06c9449c4a75b50dea50958",
+    "mtime": 1790845464.9230375,
+    "seen": 1790845465.974667,
+    "ast_hash": "76f1c3b1131a72361398a6387cd876c1",
+    "semantic_hash": ""
+  },
+  "tests/conftest.py": {
+    "mtime": 1790845418.7300334,
+    "seen": 1790845465.9746602,
+    "ast_hash": "127d95c365dab7196368615cd3305e29",
     "semantic_hash": ""
   }
 }

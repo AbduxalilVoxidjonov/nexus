@@ -56,8 +56,41 @@ async def main() -> int:
     # CI'da (sessiyasiz runner) ekran bo'lmasligi mumkin — faqat ogohlantiramiz
     print(f"[{'OK' if ok else '..'}] take_screenshot: {out[:200]}")
 
-    res = await reg.execute("find_files", {"query": "nexus", "folder": str(ROOT)})
-    check("find_files (os.walk)", res.get("ok"), res.get("output"))
+    probe_dir = Path.home() / "nexus_smoke"
+    probe_dir.mkdir(exist_ok=True)
+    (probe_dir / "hisobot_smoke.txt").write_text("salom", encoding="utf-8")
+    res = await reg.execute("find_files", {"query": "hisobot_smoke", "folder": str(probe_dir)})
+    check("find_files (os.walk)", res.get("ok") and "hisobot_smoke.txt" in res.get("output", ""), res.get("output"))
+
+    # --- 2-bosqich: terminal ---
+    ok, out = await m.run_terminal_command("echo salom dunyo")
+    check("terminal: echo", ok and "salom dunyo" in out, out)
+    ok, out = await m.run_terminal_command(f'dir "{probe_dir}"')
+    check("terminal: dir (bo'shliqli yo'l)", ok and "hisobot_smoke.txt" in out, out)
+    ok, out = await m.run_terminal_command("del C:\\x.txt")
+    check("terminal: del rad etiladi", not ok and "rad" in out, out)
+    ok, out = await m.run_terminal_command("echo %USERNAME%")
+    check("terminal: %VAR% rad etiladi", not ok, out)
+
+    # --- 2-bosqich: klaviatura (Notepad'ga terib, bufer orqali qaytarib o'qiymiz) ---
+    import subprocess
+
+    notepad = subprocess.Popen(["notepad.exe"])  # noqa: ASYNC220 — smoke skript
+    try:
+        await asyncio.sleep(2.5)
+        typed = "Salom, oʻzbekcha gʻ va кирилл!"
+        ok, out = await m.type_text(typed)
+        check("type_text", ok, out)
+        await asyncio.sleep(0.5)
+        ok1, _ = await m.press_hotkey("ctrl+a")
+        ok2, _ = await m.press_hotkey("cmd+c")  # macOS yozuvi → Ctrl+C
+        await asyncio.sleep(0.5)
+        ok, out = await m.get_clipboard()
+        check("type_text + hotkey (Notepad orqali)", ok1 and ok2 and out.strip() == typed, out)
+    finally:
+        notepad.kill()
+    ok, out = await m.press_hotkey("ctrl+nokey")
+    check("press_hotkey: noma'lum klavish xatosi", not ok and "Noma'lum" in out, out)
 
     from fastapi.testclient import TestClient
 

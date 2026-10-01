@@ -1,6 +1,8 @@
 """Windows qatlami: macOS'da ham ishlaydigan (OS chaqiruvlari mock qilingan) testlar."""
 from __future__ import annotations
 
+import sys
+
 import pytest
 
 from nexus import windows_actions as wa
@@ -120,3 +122,124 @@ def test_windows_sensitive_suffixes():
     assert path_is_sensitive("~/Desktop/run.bat")
     assert path_is_sensitive("~/Desktop/x.ps1")
     assert not path_is_sensitive("~/Desktop/hisobot.txt")
+
+
+# ---------------------------------------------------------------------------
+# 2-bosqich: klaviatura va terminal qo'riqchisi
+# ---------------------------------------------------------------------------
+from nexus import windows_input as wi
+
+
+@pytest.mark.parametrize(
+    ("keys", "mods", "key"),
+    [
+        ("ctrl+s", [wi.VK_CONTROL], ord("S")),
+        ("cmd+c", [wi.VK_CONTROL], ord("C")),  # macOS yozuvi → Ctrl
+        ("cmd+shift+4", [wi.VK_CONTROL, wi.VK_SHIFT], ord("4")),
+        ("alt+f4", [wi.VK_MENU], 0x73),
+        ("win+d", [wi.VK_LWIN], ord("D")),
+        ("enter", [], 0x0D),
+        ("Ctrl + Left", [wi.VK_CONTROL], 0x25),
+        ("ctrl-z", [wi.VK_CONTROL], ord("Z")),
+        ("win", [], wi.VK_LWIN),
+    ],
+)
+def test_parse_hotkey(keys, mods, key):
+    assert wi.parse_hotkey(keys) == (mods, key)
+
+
+@pytest.mark.parametrize("keys", ["", "ctrl", "ctrl+a+b", "ctrl+nokey"])
+def test_parse_hotkey_errors(keys):
+    with pytest.raises(wi.HotkeyError):
+        wi.parse_hotkey(keys)
+
+
+def test_text_events_unicode_and_newline():
+    ev = wi.text_events("oʻ\n😀")
+    units = [scan for vk, scan, fl in ev if fl == wi.KEYEVENTF_UNICODE]
+    assert units[:2] == [ord("o"), ord("ʻ")]
+    assert len(units) == 4  # emoji — ikkita surrogat
+    assert (wi.VK_SHIFT, 0, 0) in ev and (wi.VK_RETURN, 0, 0) in ev  # \n → Shift+Enter
+
+
+def test_combo_events_release_in_reverse():
+    ev = wi.combo_events([wi.VK_CONTROL, wi.VK_SHIFT], 0x25)
+    assert [vk for vk, _, _ in ev] == [wi.VK_CONTROL, wi.VK_SHIFT, 0x25, 0x25, wi.VK_SHIFT, wi.VK_CONTROL]
+    assert ev[2][2] & wi.KEYEVENTF_EXTENDEDKEY  # o'q klavishi — kengaytirilgan
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="wintypes.LONG faqat Windows'da 4 bayt")
+def test_input_struct_size_matches_win64():
+    import ctypes
+
+    assert ctypes.sizeof(wi.INPUT) == (40 if ctypes.sizeof(ctypes.c_void_p) == 8 else 28)
+
+
+@pytest.mark.parametrize(
+    ("cmd", "verdict"),
+    [
+        ("dir", "allow"),
+        ("DIR.EXE C:\\Users\\me\\Desktop", "allow"),
+        ('dir "C:\\Users\\me\\My Docs"', "allow"),
+        ("ipconfig /all", "allow"),
+        ("ping -n 3 google.com", "allow"),
+        ("ping -t google.com", "deny"),
+        ("ping -n 50 google.com", "deny"),
+        ("date /t", "allow"),
+        ("date", "deny"),
+        ("git status", "allow"),
+        ("git fetch", "confirm"),
+        ("git push", "deny"),
+        ("copy a.txt b.txt", "allow"),
+        ("copy /y a.txt b.txt", "confirm"),
+        ("notepad", "confirm"),
+        ("del C:\\x.txt", "deny"),
+        ("RD /s /q C:\\x", "deny"),
+        ("powershell -c whoami", "deny"),
+        ("format C:", "deny"),
+        ("echo %USERNAME%", "deny"),
+        ("echo a ^& calc", "deny"),
+        ("echo a & calc", "deny"),
+        ("type C:\\Windows\\System32\\drivers\\etc\\hosts", "deny"),
+        ("dir \\\\server\\share", "deny"),
+        ("findstr del x.txt", "deny"),
+    ],
+)
+def test_windows_command_guard(cmd, verdict):
+    assert wa.WindowsCommandGuard().check(cmd)[0] == verdict
+
+
+def test_windows_guard_argv_keeps_backslashes():
+    assert wa.WindowsCommandGuard.argv('DIR "C:\\My Docs" /b') == ["dir", "C:\\My Docs", "/b"]
+
+
+async def test_terminal_runs_through_cmd_utf8(monkeypatch):
+    calls: list[list[str]] = []
+
+    async def fake_shell(argv, timeout=15.0, stdin=None):
+        calls.append(argv)
+        return True, "salom"
+
+    monkeypatch.setattr(wa, "run_shell", fake_shell)
+    monkeypatch.setattr(wa.settings, "allow_terminal", True)
+    c = wa.WindowsController()
+    ok, out = await c.run_terminal_command('dir "C:\\My Docs"')
+    assert ok and out == "salom"
+    assert calls[0][:4] == ["cmd", "/d", "/s", "/c"]
+    assert calls[0][4] == 'chcp 65001>nul & dir "C:\\My Docs"'
+    ok, out = await c.run_terminal_command("git fetch")
+    assert not ok and "Tasdiq" in out and len(calls) == 1
+    ok, _ = await c.run_terminal_command("git fetch", confirmed=True)
+    assert ok and len(calls) == 2
+
+
+async def test_type_text_and_hotkey_use_sendinput(monkeypatch):
+    sent: list[list] = []
+    monkeypatch.setattr(wi, "send_events", lambda ev, chunk=200: sent.append(ev) or len(ev))
+    c = wa.WindowsController()
+    ok, out = await c.type_text("ok", press_enter=True)
+    assert ok and "Enter" in out and len(sent) == 2
+    ok, out = await c.press_hotkey("ctrl+s")
+    assert ok and len(sent) == 3
+    ok, out = await c.press_hotkey("ctrl+")
+    assert not ok and len(sent) == 3

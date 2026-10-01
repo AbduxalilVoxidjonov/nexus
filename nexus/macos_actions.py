@@ -317,7 +317,7 @@ class CommandGuard:
             return "deny", "Xavfli buyruq naqshi (DANGEROUS_SHELL)"
 
         try:
-            argv = shlex.split(raw)
+            argv = self.split(raw)
         except ValueError as e:
             return "deny", f"Buyruqni o'qib bo'lmadi: {e}"
         if not argv:
@@ -340,7 +340,7 @@ class CommandGuard:
             for part in self.FORBIDDEN_PATH_PARTS:
                 if part in expanded or part in tok.lower():
                     return "deny", f"Taqiqlangan yo'l: {tok}"
-            looks_like_path = "/" in tok or tok.startswith(("~", "."))
+            looks_like_path = "/" in tok or "\\" in tok or tok.startswith(("~", "."))
             if (
                 sensitive_tok is None
                 and not tok.startswith("-")
@@ -425,6 +425,11 @@ class CommandGuard:
                 if tok.startswith("-") and tok not in {"-p", "-v", "-pv", "-vp"}:
                     return "confirm", f"mkdir uchun {tok} bayrog'i"
         return None
+
+    @staticmethod
+    def split(command: str) -> list[str]:
+        """Buyruqni tokenlarga bo'lish (POSIX qoidalari). Windows qo'riqchisi qayta belgilaydi."""
+        return shlex.split(command)
 
     @staticmethod
     def argv(command: str) -> list[str]:
