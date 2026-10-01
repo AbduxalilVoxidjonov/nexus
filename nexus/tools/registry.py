@@ -25,6 +25,7 @@ import inspect
 import json
 import logging
 import os
+import sys
 import time
 from collections.abc import Awaitable, Callable
 from pathlib import Path
@@ -68,6 +69,7 @@ EXTENSION_MODULES: list[str] = [
     "nexus.screen_reader",
     "nexus.video_translate",
 ]
+IS_WINDOWS = sys.platform == "win32"
 # Enter bosilganda terminaldagi qatorni bajaradigan klavishlar
 _ENTER_KEYS = frozenset({"enter", "return"})
 
@@ -99,8 +101,14 @@ class ToolRegistry:
     def __init__(self, bus: EventBus | None = None, settings: Any = None) -> None:
         self.bus = bus
         self.settings = settings
-        self.mac = MacOSController()
-        self.tabs = BrowserController()
+        if IS_WINDOWS:
+            from nexus.windows_actions import WindowsBrowserController, WindowsController
+
+            self.mac = WindowsController()
+            self.tabs = WindowsBrowserController()
+        else:
+            self.mac = MacOSController()
+            self.tabs = BrowserController()
         self.dom = BrowserDOMController()
         self.youtube = YouTubeController(self.dom)
         self.search = SearchNavigationController(self.dom, self.tabs)
@@ -122,6 +130,11 @@ class ToolRegistry:
         self.on_kill_all: Callable[[], Any] | None = None
         self._decls: dict[str, dict] = {d["name"]: d for d in ALL_TOOL_DECLARATIONS}
         self._handlers: dict[str, Handler] = self._build_handlers()
+        if IS_WINDOWS:
+            # Windows ekvivalenti hali yo'q toollar Gemini'ga e'lon qilinmaydi
+            from nexus.windows_actions import SUPPORTED_TOOLS
+
+            self._decls = {k: v for k, v in self._decls.items() if k in SUPPORTED_TOOLS}
         self.extensions: list[str] = []
         self._load_extensions()
 
@@ -142,6 +155,11 @@ class ToolRegistry:
     # ------------------------------------------------------------------
     def _load_extensions(self) -> None:
         for mod_name in EXTENSION_MODULES:
+            if IS_WINDOWS:
+                from nexus.windows_actions import SUPPORTED_EXTENSIONS
+
+                if mod_name not in SUPPORTED_EXTENSIONS:
+                    continue
             try:
                 mod = importlib.import_module(mod_name)
             except ImportError as e:

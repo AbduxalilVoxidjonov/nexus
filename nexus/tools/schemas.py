@@ -7,6 +7,7 @@ Tur nomlari katta harfda (OBJECT/STRING/INTEGER/NUMBER/BOOLEAN). Parametrsiz too
 
 from __future__ import annotations
 
+import sys
 from typing import Any
 
 LANG_NOTE = " The user may speak Uzbek, Russian or English; interpret the request regardless of language."
@@ -449,5 +450,17 @@ Screen:
 asked about, call look_at_screen (vision) or read_screen_ocr. Never tell the user to check Accessibility or \
 Screen Recording permissions — they are already verified at startup.
 """
+
+WINDOWS_NOTE = """
+Platform:
+- This computer runs Windows, not macOS. Ignore any guidance above about macOS, Finder, Safari, cmd shortcuts \
+or tools you were not given; use only the tools you actually have. Folders open in File Explorer, the trash is \
+the Recycle Bin, and web pages open in the default browser. If the user asks for something you have no tool \
+for, say briefly that it is not available on Windows yet.
+"""
+
+if sys.platform == "win32":
+    SYSTEM_INSTRUCTION = SYSTEM_INSTRUCTION.replace("controls this Mac (macOS)", "controls this Windows PC")
+    SYSTEM_INSTRUCTION += WINDOWS_NOTE
 
 __all__ = ["ALL_TOOL_DECLARATIONS", "BROWSER_PARAM", "BROWSER_TOOLS", "SYSTEM_INSTRUCTION", "SYSTEM_TOOLS"]

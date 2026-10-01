@@ -1,0 +1,42 @@
+name: Windows .exe
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+
+      - name: Bog'liqliklar
+        run: uv sync --extra dev
+
+      - name: Testlar
+        # Eski testlarning bir qismi macOS'ga xos — hozircha .exe yig'ilishini to'xtatmaydi
+        continue-on-error: true
+        run: uv run pytest -q -p no:cacheprovider
+
+      - name: Windows smoke testi
+        run: uv run python scripts/windows_smoke.py
+
+      - name: .exe yig'ish
+        run: uv run pyinstaller nexus-windows.spec --noconfirm
+
+      - name: .exe ishga tushishini tekshirish
+        shell: pwsh
+        run: |
+          $p = Start-Process dist\Nexus.exe -ArgumentList "--version" -PassThru -Wait -RedirectStandardOutput ver.txt
+          Get-Content ver.txt
+          if ($p.ExitCode -ne 0) { exit 1 }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Nexus-windows
+          path: dist/Nexus.exe

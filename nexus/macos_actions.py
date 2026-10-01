@@ -18,6 +18,7 @@ import re
 import shlex
 import shutil
 import signal
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
@@ -59,6 +60,14 @@ def _clamp(value: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, value))
 
 
+if sys.platform == "win32":
+    # Oynasiz .exe'dan PowerShell/cmd chaqirilganda qora konsol oynasi chiqmasin
+    _SPAWN_KWARGS: dict[str, Any] = {"creationflags": 0x08000000}  # CREATE_NO_WINDOW
+else:
+    # o'z process group'i — timeout'da butun daraxt o'ldiriladi
+    _SPAWN_KWARGS = {"start_new_session": True}
+
+
 async def run_shell(argv: list[str], timeout: float = DEFAULT_TIMEOUT, stdin: bytes | None = None) -> Result:
     """Dasturni shell'siz ishga tushiradi. `(ok, stdout yoki stderr)` qaytaradi."""
     if not argv:
@@ -69,7 +78,7 @@ async def run_shell(argv: list[str], timeout: float = DEFAULT_TIMEOUT, stdin: by
             stdin=asyncio.subprocess.PIPE if stdin is not None else asyncio.subprocess.DEVNULL,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            start_new_session=True,  # o'z process group'i — timeout'da butun daraxt o'ldiriladi
+            **_SPAWN_KWARGS,
         )
     except FileNotFoundError:
         return False, f"Dastur topilmadi: {argv[0]}"
@@ -118,8 +127,8 @@ def _kill_process_group(proc: asyncio.subprocess.Process) -> None:
     if proc.returncode is not None:
         return
     try:
-        os.killpg(proc.pid, signal.SIGKILL)
-    except (ProcessLookupError, PermissionError, OSError):
+        os.killpg(proc.pid, signal.SIGKILL)  # Windows'da killpg yo'q → AttributeError → proc.kill()
+    except (ProcessLookupError, PermissionError, OSError, AttributeError):
         with _suppress():
             proc.kill()
 

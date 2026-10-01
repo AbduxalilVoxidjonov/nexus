@@ -1,7 +1,7 @@
 [project]
 name = "nexus-voice"
 version = "0.1.0"
-description = "Nexus Ovoz OS — Gemini Live API asosidagi macOS ovozli yordamchi daemon"
+description = "Nexus Ovoz OS — Gemini Live API asosidagi macOS/Windows ovozli yordamchi daemon"
 requires-python = ">=3.11"
 dependencies = [
     "google-genai>=1.30",
@@ -13,11 +13,12 @@ dependencies = [
     "python-dotenv>=1.0",
     "psutil>=6.0",
     "openpyxl>=3.1",
-    "pyobjc-framework-Cocoa>=10.3",
-    "pyobjc-framework-Quartz>=10.3",
-    "pyobjc-framework-ApplicationServices>=10.3",
-    "pyobjc-framework-WebKit>=10.3",
-    "pyobjc-framework-Vision>=10.3",
+    "pyobjc-framework-Cocoa>=10.3; sys_platform == 'darwin'",
+    "pyobjc-framework-Quartz>=10.3; sys_platform == 'darwin'",
+    "pyobjc-framework-ApplicationServices>=10.3; sys_platform == 'darwin'",
+    "pyobjc-framework-WebKit>=10.3; sys_platform == 'darwin'",
+    "pyobjc-framework-Vision>=10.3; sys_platform == 'darwin'",
+    "pywebview>=5.0; sys_platform == 'win32'",
 ]
 
 [project.optional-dependencies]

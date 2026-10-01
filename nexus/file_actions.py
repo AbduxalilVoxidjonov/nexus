@@ -24,6 +24,7 @@ import json
 import logging
 import os
 import re
+import sys
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
@@ -143,7 +144,11 @@ HOME = Path.home()
 DEFAULT_DIR = Path(os.getenv("NEXUS_DEFAULT_DIR", "~/Desktop")).expanduser()
 NOTES_FILE = HOME / "Documents" / "nexus_notes.txt"
 SPREADSHEET_FILE = HOME / "Documents" / "nexus.xlsx"
-ALLOWED_ROOTS: tuple[Path, ...] = (HOME, Path("/tmp"), Path("/private/tmp"), Path("/Volumes"))
+IS_WINDOWS = sys.platform == "win32"
+if IS_WINDOWS:
+    ALLOWED_ROOTS: tuple[Path, ...] = (HOME, Path(os.environ.get("TEMP") or HOME))
+else:
+    ALLOWED_ROOTS = (HOME, Path("/tmp"), Path("/private/tmp"), Path("/Volumes"))
 
 FOLDER_ALIASES: dict[str, Path] = {
     "desktop": HOME / "Desktop",
@@ -313,6 +318,18 @@ async def delete_file(args: dict[str, Any]) -> dict[str, Any]:
     if not _is_confirmed(args):
         summary = f"Faylni Savatga ko'chirish: {path}"
         return _result(False, summary, needs_confirmation=True, summary=summary)
+    if IS_WINDOWS:
+        from nexus.windows_actions import _ps_quote, run_powershell
+
+        ok, out = await run_powershell(
+            "Add-Type -AssemblyName Microsoft.VisualBasic;"
+            "[Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile("
+            f"{_ps_quote(str(path.resolve()))},'OnlyErrorDialogs','SendToRecycleBin')",
+            timeout=15,
+        )
+        if ok:
+            return _result(True, f"{path.name} Savatga ko'chirildi: {path}")
+        return _result(False, f"Savatga ko'chirib bo'lmadi: {out}")
     script = f"tell application \"Finder\" to delete POSIX file {_as_str(str(path.resolve()))}"
     ok, out = await run_applescript(script, timeout=15)
     if ok:
@@ -544,9 +561,12 @@ async def find_files(args: dict[str, Any]) -> dict[str, Any]:
         return _result(False, f"Papka topilmadi: {folder}")
     limit = max(1, min(int(args.get("max_results") or 20), 100))
 
-    ok, out = await run_shell(["mdfind", "-onlyin", str(folder), "-name", query], timeout=15)
-    lines = [ln for ln in out.splitlines() if ln.strip()] if ok else []
-    if not lines:
+    if IS_WINDOWS:
+        lines = await asyncio.to_thread(_walk_find, folder, query, limit * 5)
+    else:
+        ok, out = await run_shell(["mdfind", "-onlyin", str(folder), "-name", query], timeout=15)
+        lines = [ln for ln in out.splitlines() if ln.strip()] if ok else []
+    if not lines and not IS_WINDOWS:
         ok2, out2 = await run_shell(["mdfind", "-onlyin", str(folder), query], timeout=15)
         lines = [ln for ln in out2.splitlines() if ln.strip()] if ok2 else []
     results = []
@@ -562,6 +582,24 @@ async def find_files(args: dict[str, Any]) -> dict[str, Any]:
     return _result(True, {"query": query, "folder": str(folder), "count": len(results), "results": results})
 
 
+def _walk_find(folder: Path, query: str, limit: int, max_scanned: int = 200_000) -> list[str]:
+    """Spotlight (mdfind) yo'q joyda: nomida `query` bor fayllar (yashirin papkalarsiz, cheklangan)."""
+    needle = query.lower()
+    found: list[str] = []
+    scanned = 0
+    for root, dirs, files in os.walk(folder):
+        dirs[:] = [d for d in dirs if not d.startswith(".") and d.lower() not in ("appdata", "node_modules")]
+        for name in dirs + files:
+            scanned += 1
+            if needle in name.lower():
+                found.append(os.path.join(root, name))
+                if len(found) >= limit:
+                    return found
+        if scanned >= max_scanned:
+            break
+    return found
+
+
 async def open_with_app(args: dict[str, Any]) -> dict[str, Any]:
     path = resolve_path(args.get("path"))
     app = str(args.get("app") or "").strip()
@@ -572,7 +610,10 @@ async def open_with_app(args: dict[str, Any]) -> dict[str, Any]:
         return _result(False, why)
     if not path.exists():
         return _result(False, f"Topilmadi: {path}")
-    ok, out = await run_shell(["open", "-a", app, str(path)], timeout=15)
+    if IS_WINDOWS:
+        ok, out = await run_shell(["cmd", "/c", "start", "", app, str(path)], timeout=15)
+    else:
+        ok, out = await run_shell(["open", "-a", app, str(path)], timeout=15)
     if ok:
         return _result(True, f"{path.name} {app} bilan ochildi")
     return _result(False, "Ochib bo'lmadi: " + (out or "noma'lum xato"))

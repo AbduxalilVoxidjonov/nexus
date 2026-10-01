@@ -238,8 +238,18 @@ _SENSITIVE_DIRS = (
     "/sbin",
     "/var/db",
     "/.config/autostart",
+    # Windows: avtoyuklash, tizim va dasturlar papkalari
+    "/start menu/programs/startup",
+    "c:/windows",
+    "c:/program files",
+    "c:/program files (x86)",
+    "c:/programdata",
 )
-_SENSITIVE_SUFFIXES = (".plist", ".command", ".sh", ".zsh", ".bash", ".terminal", ".workflow", ".app")
+_SENSITIVE_SUFFIXES = (
+    ".plist", ".command", ".sh", ".zsh", ".bash", ".terminal", ".workflow", ".app",
+    # Windows: ishga tushadigan skript/yorliq/registr fayllari
+    ".bat", ".cmd", ".ps1", ".vbs", ".lnk", ".reg", ".scr",
+)
 
 
 def path_is_sensitive(path: str | Path | None) -> bool:
@@ -250,7 +260,7 @@ def path_is_sensitive(path: str | Path | None) -> bool:
         resolved = Path(str(path)).expanduser().resolve()
     except (OSError, RuntimeError):
         return True
-    lowered = str(resolved).lower()
+    lowered = str(resolved).lower().replace("\\", "/")  # Windows yo'llari ham "/" bilan solishtiriladi
     name = resolved.name
     if name in _SENSITIVE_NAMES:
         return True

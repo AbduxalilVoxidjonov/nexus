@@ -37,6 +37,17 @@ BANNER = r"""
 """
 
 
+def platform_controller() -> Any:
+    """Joriy OS uchun tizim kontrolleri (macOS — AppleScript, Windows — ctypes/PowerShell)."""
+    if sys.platform == "win32":
+        from nexus.windows_actions import WindowsController
+
+        return WindowsController()
+    from nexus.macos_actions import MacOSController
+
+    return MacOSController()
+
+
 # ---------------------------------------------------------------------------
 # Metrikalar
 # ---------------------------------------------------------------------------
@@ -53,9 +64,7 @@ class MetricsTicker:
     async def _info(self) -> dict[str, Any]:
         if self._controller is None:
             try:
-                from nexus.macos_actions import MacOSController
-
-                self._controller = MacOSController()
+                self._controller = platform_controller()
             except Exception as e:  # noqa: BLE001
                 log.debug("MacOSController yo'q, psutil'ga o'tamiz: %s", e)
                 self._controller = False
@@ -200,9 +209,7 @@ async def check_environment(settings: Settings) -> int:
         problems += 1
 
     try:
-        from nexus.macos_actions import MacOSController
-
-        perms = await MacOSController().check_permissions()
+        perms = await platform_controller().check_permissions()
         for k, v in (perms or {}).items():
             if not isinstance(v, (bool, type(None))):
                 continue  # hints/message kabi qo'shimcha maydonlar
@@ -281,9 +288,7 @@ async def run(
 
     # Ruxsatlar (eslatma sifatida)
     try:
-        from nexus.macos_actions import MacOSController
-
-        perms = await MacOSController().check_permissions()
+        perms = await platform_controller().check_permissions()
         log.info("Ruxsatlar: %s", perms)
         for k, v in (perms or {}).items():
             if v is False:
@@ -409,11 +414,11 @@ def desktop_mode(args: argparse.Namespace) -> bool:
     """Desktop (oyna + orb + menyu bar) rejimi kerakmi?
 
     `--headless`, `--no-ui` (server yo'q — oyna ko'rsatadigan narsa yo'q) va `--text`
-    (bir martalik test buyrug'i) eski, oynasiz rejimni tanlaydi. macOS bo'lmasa ham headless.
+    (bir martalik test buyrug'i) eski, oynasiz rejimni tanlaydi. macOS/Windows bo'lmasa ham headless.
     """
     if getattr(args, "headless", False) or getattr(args, "no_ui", False) or getattr(args, "text", None):
         return False
-    return sys.platform == "darwin"
+    return sys.platform in ("darwin", "win32")
 
 
 def cli(argv: list[str] | None = None) -> int:
@@ -444,7 +449,12 @@ def cli(argv: list[str] | None = None) -> int:
         return asyncio.run(check_environment(settings))
 
     if desktop_mode(args):
-        from nexus.desktop import DesktopOptions, run_desktop
+        from nexus.desktop import DesktopOptions
+
+        if sys.platform == "win32":
+            from nexus.desktop_win import run_desktop
+        else:
+            from nexus.desktop import run_desktop
 
         return run_desktop(settings, DesktopOptions.from_args(args))
 
