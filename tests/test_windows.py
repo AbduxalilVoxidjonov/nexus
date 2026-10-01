@@ -492,3 +492,25 @@ def test_translate_video_decl_on_windows():
 def test_video_install_hint_and_no_window_flags(monkeypatch):
     assert ("winget" in vt.INSTALL_HINT) == (sys.platform == "win32")
     assert ("creationflags" in vt.NO_WINDOW) == (sys.platform == "win32")
+
+
+def test_page_title_strips_profile():
+    assert _bw("msedge", "Sahifa - Profile 1 - Microsoft\u200b Edge").page_title == "Sahifa"
+
+
+def test_document_tree_retries_until_filled(monkeypatch):
+    import nexus.windows_screen as wscreen
+
+    doc = SimpleNamespace(ControlTypeName="DocumentControl")
+    calls = {"n": 0}
+
+    def fake_walk(root, max_items=4000):
+        if root is doc:
+            calls["n"] += 1
+            return [doc] if calls["n"] < 3 else [doc, SimpleNamespace(ControlTypeName="ButtonControl")]
+        return [root, doc]
+
+    monkeypatch.setattr(wscreen, "_walk", fake_walk)
+    monkeypatch.setattr(wb, "DOC_RETRY_S", 0)
+    items = wb.document_tree(SimpleNamespace(ControlTypeName="PaneControl"))
+    assert len(items) == 2 and calls["n"] == 3

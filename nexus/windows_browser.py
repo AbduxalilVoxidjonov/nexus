@@ -18,6 +18,7 @@ import asyncio
 import ctypes
 import logging
 import re
+import time
 import webbrowser
 from dataclasses import dataclass
 from typing import Any
@@ -65,8 +66,10 @@ class BrowserWindow:
         t = self.title
         for suffix in TITLE_SUFFIXES:
             if t.endswith(suffix):
-                return t[: -len(suffix)]
-        return t
+                t = t[: -len(suffix)]
+                break
+        # Edge/Chrome profil nomi: "Sahifa - Profile 1"
+        return re.sub(r" - Profile \d+$", "", t)
 
     @property
     def label(self) -> str:
@@ -132,6 +135,26 @@ def looks_like_result(name: str) -> bool:
 # ---------------------------------------------------------------------------
 # Windows API (faqat Windows'da chaqiriladi)
 # ---------------------------------------------------------------------------
+DOC_TRIES = 5
+DOC_RETRY_S = 0.6
+
+
+def document_tree(root: Any, tries: int = DOC_TRIES) -> list[Any]:
+    """Sahifa (DocumentControl) elementlari. Chromium veb-kontent daraxtini UIA mijozi birinchi
+    so'raganda quradi — birinchi o'tishda hujjat bo'sh bo'ladi, shuning uchun qisqa qayta urinish."""
+    from nexus.windows_screen import _walk
+
+    docs: list[Any] = []
+    for attempt in range(tries):
+        docs = [c for c in _walk(root, 600) if c.ControlTypeName == "DocumentControl"]
+        if docs:
+            items = _walk(docs[0], 3000)
+            if len(items) > 1:
+                return items
+        if attempt < tries - 1:
+            time.sleep(DOC_RETRY_S)
+    return _walk(docs[0] if docs else root, 3000)
+
 def list_browser_windows() -> list[BrowserWindow]:
     """Ko'rinadigan brauzer oynalari, Z-tartibda (eng ustidagisi birinchi)."""
     import psutil
@@ -330,24 +353,21 @@ class WindowsBrowser:
 
     async def _document_controls(self, win: BrowserWindow) -> Any:
         """Sahifa (DocumentControl) ichidagi elementlar; hujjat topilmasa — butun oyna."""
-        from nexus.windows_screen import _walk
 
         def work(auto: Any, root: Any) -> list[Any]:
-            docs = [c for c in _walk(root, 400) if c.ControlTypeName == "DocumentControl"]
-            return _walk(docs[0] if docs else root, 3000)
+            return document_tree(root)
 
         return await self._uia_run(win.hwnd, work)
 
     async def click_by_text(self, browser: str, text: str, tag: str | None = None) -> Result:
-        from nexus.windows_screen import _activate, _press, _walk, collect_elements, find_by_label
+        from nexus.windows_screen import _activate, _press, collect_elements, find_by_label
 
         win, err = await self._focused(browser)
         if win is None:
             return False, err
 
         def work(auto: Any, root: Any) -> Result:
-            docs = [c for c in _walk(root, 400) if c.ControlTypeName == "DocumentControl"]
-            elements = collect_elements(_walk(docs[0] if docs else root, 3000), "", 600)
+            elements = collect_elements(document_tree(root), "", 600)
             matches = find_by_label(elements, text)
             if not matches:
                 return False, f"Sahifada '{text}' nomli tugma yoki havola topilmadi"
@@ -437,7 +457,7 @@ class WindowsBrowser:
 
     async def type_query_and_search(self, browser: str, query: str, auto_submit: bool = True) -> Result:
         from nexus import windows_input
-        from nexus.windows_screen import _activate, _walk
+        from nexus.windows_screen import _activate
 
         q = (query or "").strip()
         if not q:
@@ -447,8 +467,7 @@ class WindowsBrowser:
             return False, err
 
         def work(auto: Any, root: Any) -> str | None:
-            docs = [c for c in _walk(root, 400) if c.ControlTypeName == "DocumentControl"]
-            for c in _walk(docs[0] if docs else root, 3000):
+            for c in document_tree(root):
                 if c.ControlTypeName not in ("EditControl", "ComboBoxControl") or getattr(c, "IsOffscreen", False):
                     continue
                 label = f"{c.Name} {getattr(c, 'HelpText', '')}".lower()

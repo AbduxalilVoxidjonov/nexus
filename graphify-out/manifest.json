@@ -72,9 +72,9 @@
     "semantic_hash": ""
   },
   "nexus/main.py": {
-    "mtime": 1790845441.454552,
-    "seen": 1790845465.9746492,
-    "ast_hash": "a36b22b5d443154d31628a72517973ec",
+    "mtime": 1790846579.0925913,
+    "seen": 1790846598.5644429,
+    "ast_hash": "3f2a45d3fa8e203992b9276ae89afd2d",
     "semantic_hash": ""
   },
   "nexus/safety.py": {
@@ -90,9 +90,9 @@
     "semantic_hash": "62a0866bf6cf98a3d0634b48663feb53"
   },
   "nexus/server.py": {
-    "mtime": 1790845394.5821834,
-    "seen": 1790845465.9746509,
-    "ast_hash": "8387c7e08bb27210e9f97bf7d1f850d3",
+    "mtime": 1790846579.0923548,
+    "seen": 1790846598.5644438,
+    "ast_hash": "b618e795d41bd4d31317e561cf21a838",
     "semantic_hash": ""
   },
   "nexus/tools/__init__.py": {
@@ -210,15 +210,15 @@
     "semantic_hash": "ec956e11da1ed745db59468af5117f27"
   },
   "ui/app.js": {
-    "mtime": 1790791533.8730276,
-    "seen": 1790791656.526546,
-    "ast_hash": "ba34671a7da5a64d9d0936a596082456",
+    "mtime": 1790846303.3568487,
+    "seen": 1790846598.564457,
+    "ast_hash": "5cf621b62b2cdd505ade80b84c9399e0",
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1790791641.8995762,
-    "seen": 1790791656.526546,
-    "ast_hash": "e10fed804854777ed2d02f4b503ec8f8",
+    "mtime": 1790846324.3059785,
+    "seen": 1790846598.564458,
+    "ast_hash": "051325230e8ea01c0667d95f68b71b3d",
     "semantic_hash": ""
   },
   "design/Nexus Ovoz OS.dc.html": {
@@ -270,9 +270,9 @@
     "semantic_hash": ""
   },
   "nexus/desktop_win.py": {
-    "mtime": 1790846200.2740066,
-    "seen": 1790846264.70034,
-    "ast_hash": "e72289fbbe21316a942f8fc26de5d8cd",
+    "mtime": 1790846579.0927815,
+    "seen": 1790846598.56444,
+    "ast_hash": "48fcf28dc9ffbdab714d1414ba828341",
     "semantic_hash": ""
   },
   "nexus/windows_actions.py": {
@@ -282,9 +282,9 @@
     "semantic_hash": ""
   },
   "scripts/windows_smoke.py": {
-    "mtime": 1790846113.9014459,
-    "seen": 1790846114.885292,
-    "ast_hash": "09a77649ffba01af8dae05a25d289ca7",
+    "mtime": 1790846413.3384032,
+    "seen": 1790846598.564451,
+    "ast_hash": "c8c8a4639c4271e961779fe4e906ca47",
     "semantic_hash": ""
   },
   "tests/test_windows.py": {
