@@ -139,21 +139,42 @@ DOC_TRIES = 5
 DOC_RETRY_S = 0.6
 
 
-def document_tree(root: Any, tries: int = DOC_TRIES) -> list[Any]:
+# Edge'ning o'z interfeysi (yon panel, menyular) ham WebView — ular sahifa emas
+BROWSER_UI_DOC_CLASSES = frozenset({"WebView", "HubWebView"})
+MIN_PAGE_ITEMS = 3
+
+
+def pick_page_document(docs: list[Any], sizes: list[int], title: str = "") -> int | None:
+    """Sahifa hujjatining indeksi: sarlavhasi tab sarlavhasiga teng → eng ko'p elementli
+    (brauzer interfeysi WebView'laridan tashqari). Mos kelmasa None."""
+    want = title.strip().lower()
+    best: int | None = None
+    for i, d in enumerate(docs):
+        if sizes[i] < MIN_PAGE_ITEMS or (getattr(d, "ClassName", "") or "") in BROWSER_UI_DOC_CLASSES:
+            continue
+        if want and (getattr(d, "Name", "") or "").strip().lower() == want:
+            return i
+        if best is None or sizes[i] > sizes[best]:
+            best = i
+    return best
+
+
+def document_tree(root: Any, title: str = "", tries: int = DOC_TRIES) -> list[Any]:
     """Sahifa (DocumentControl) elementlari. Chromium veb-kontent daraxtini UIA mijozi birinchi
-    so'raganda quradi — birinchi o'tishda hujjat bo'sh bo'ladi, shuning uchun qisqa qayta urinish."""
+    so'raganda quradi — birinchi o'tishda hujjat bo'sh bo'ladi, shuning uchun qisqa qayta urinish.
+    Oynada bir nechta hujjat bo'ladi (Edge interfeysi ham WebView) — `pick_page_document` tanlaydi."""
     from nexus.windows_screen import _walk
 
-    docs: list[Any] = []
     for attempt in range(tries):
-        docs = [c for c in _walk(root, 600) if c.ControlTypeName == "DocumentControl"]
-        if docs:
-            items = _walk(docs[0], 3000)
-            if len(items) > 1:
-                return items
+        docs = [c for c in _walk(root, 5000) if c.ControlTypeName == "DocumentControl"]
+        trees = [_walk(d, 3000) for d in docs]
+        idx = pick_page_document(docs, [len(t) for t in trees], title)
+        if idx is not None:
+            return trees[idx]
         if attempt < tries - 1:
             time.sleep(DOC_RETRY_S)
-    return _walk(docs[0] if docs else root, 3000)
+    return []
+
 
 def list_browser_windows() -> list[BrowserWindow]:
     """Ko'rinadigan brauzer oynalari, Z-tartibda (eng ustidagisi birinchi)."""
@@ -355,7 +376,7 @@ class WindowsBrowser:
         """Sahifa (DocumentControl) ichidagi elementlar; hujjat topilmasa — butun oyna."""
 
         def work(auto: Any, root: Any) -> list[Any]:
-            return document_tree(root)
+            return document_tree(root, win.page_title)
 
         return await self._uia_run(win.hwnd, work)
 
@@ -367,7 +388,7 @@ class WindowsBrowser:
             return False, err
 
         def work(auto: Any, root: Any) -> Result:
-            elements = collect_elements(document_tree(root), "", 600)
+            elements = collect_elements(document_tree(root, win.page_title), "", 600)
             matches = find_by_label(elements, text)
             if not matches:
                 return False, f"Sahifada '{text}' nomli tugma yoki havola topilmadi"
@@ -467,7 +488,7 @@ class WindowsBrowser:
             return False, err
 
         def work(auto: Any, root: Any) -> str | None:
-            for c in document_tree(root):
+            for c in document_tree(root, win.page_title):
                 if c.ControlTypeName not in ("EditControl", "ComboBoxControl") or getattr(c, "IsOffscreen", False):
                     continue
                 label = f"{c.Name} {getattr(c, 'HelpText', '')}".lower()

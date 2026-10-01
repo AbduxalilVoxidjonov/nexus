@@ -498,19 +498,30 @@ def test_page_title_strips_profile():
     assert _bw("msedge", "Sahifa - Profile 1 - Microsoft\u200b Edge").page_title == "Sahifa"
 
 
+def test_pick_page_document_prefers_title_and_skips_browser_ui():
+    def doc(name, cls=""):
+        return SimpleNamespace(ControlTypeName="DocumentControl", Name=name, ClassName=cls)
+
+    docs = [doc("", "WebView"), doc("Welcome"), doc("Mening sahifam"), doc("", "HubWebView")]
+    assert wb.pick_page_document(docs, [50, 30, 10, 40], "Mening sahifam") == 2
+    assert wb.pick_page_document(docs, [50, 30, 10, 40], "") == 1  # eng kattasi, UI emas
+    assert wb.pick_page_document(docs, [50, 2, 2, 40], "") is None  # hammasi bo'sh yoki UI
+
+
 def test_document_tree_retries_until_filled(monkeypatch):
     import nexus.windows_screen as wscreen
 
-    doc = SimpleNamespace(ControlTypeName="DocumentControl")
+    page = SimpleNamespace(ControlTypeName="DocumentControl", Name="Sahifa", ClassName="")
+    btn = SimpleNamespace(ControlTypeName="ButtonControl")
     calls = {"n": 0}
 
     def fake_walk(root, max_items=4000):
-        if root is doc:
+        if root is page:
             calls["n"] += 1
-            return [doc] if calls["n"] < 3 else [doc, SimpleNamespace(ControlTypeName="ButtonControl")]
-        return [root, doc]
+            return [page] if calls["n"] < 3 else [page, btn, btn, btn]
+        return [root, page]
 
     monkeypatch.setattr(wscreen, "_walk", fake_walk)
     monkeypatch.setattr(wb, "DOC_RETRY_S", 0)
-    items = wb.document_tree(SimpleNamespace(ControlTypeName="PaneControl"))
-    assert len(items) == 2 and calls["n"] == 3
+    items = wb.document_tree(SimpleNamespace(ControlTypeName="PaneControl"), "Sahifa")
+    assert len(items) == 4 and calls["n"] == 3

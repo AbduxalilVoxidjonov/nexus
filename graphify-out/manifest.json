@@ -282,9 +282,9 @@
     "semantic_hash": ""
   },
   "scripts/windows_smoke.py": {
-    "mtime": 1790846413.3384032,
-    "seen": 1790846598.564451,
-    "ast_hash": "c8c8a4639c4271e961779fe4e906ca47",
+    "mtime": 1790847042.726676,
+    "seen": 1790847043.696488,
+    "ast_hash": "7c6bb6728e3edde0cee0a7b22012e6da",
     "semantic_hash": ""
   },
   "tests/test_windows.py": {
