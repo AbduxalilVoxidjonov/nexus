@@ -20,9 +20,11 @@ def test_registry_on_windows_filters_declarations(monkeypatch):
     reg = reg_mod.ToolRegistry(None, None)
     names = {d["name"] for d in reg.declarations()}
     assert isinstance(reg.mac, wa.WindowsController)
-    assert isinstance(reg.tabs, wa.WindowsBrowserController)
+    from nexus.windows_browser import WindowsBrowser
+
+    assert isinstance(reg.tabs, WindowsBrowser) and reg.youtube is reg.tabs and reg.search_input is reg.tabs
     assert wa.SUPPORTED_TOOLS <= names
-    assert "set_brightness" not in names and "browser_click_button" not in names
+    assert "set_brightness" not in names and "browser_click_selector" not in names
     assert reg.extensions == list(wa.WINDOWS_EXTENSION_MODULES)
     # ekran toollari macOS modullaridan emas, windows_screen'dan
     assert {"read_screen_text", "click_ui_element", "look_at_screen"} <= names
@@ -327,3 +329,114 @@ async def test_read_screen_text_falls_back_to_ocr(monkeypatch):
 
 def test_windows_screen_declarations_have_handlers():
     assert {d["name"] for d in ws.TOOL_DECLARATIONS} == set(ws.HANDLERS)
+
+
+# ---------------------------------------------------------------------------
+# 2-bosqich: brauzer
+# ---------------------------------------------------------------------------
+from nexus import windows_browser as wb
+
+
+def _bw(proc, title, hwnd=1):
+    return wb.BrowserWindow(hwnd, proc, title)
+
+
+def test_browser_key_and_pick_window():
+    wins = [_bw("msedge", "Bing - Microsoft\u200b Edge", 1), _bw("chrome", "YouTube - Google Chrome", 2)]
+    assert wb.browser_key("Google Chrome") == "chrome" and wb.browser_key("safari") is None
+    assert wb.pick_window(wins, "chrome").hwnd == 2
+    assert wb.pick_window(wins, "").hwnd == 1  # eng ustidagi istalgan brauzer
+    assert wb.pick_window(wins, "firefox").hwnd == 1  # so'ralgan yo'q — istalgani
+    assert wb.pick_window([], "chrome") is None
+    assert wins[0].page_title == "Bing" and wins[1].page_title == "YouTube" and wins[0].label == "Edge"
+
+
+@pytest.mark.parametrize(
+    ("secs", "presses"),
+    [(30, [("l", 3)]), (-10, [("j", 1)]), (15, [("l", 1), ("right", 1)]), (5, [("right", 1)]), (0, [])],
+)
+def test_seek_presses(secs, presses):
+    assert wb.seek_presses(secs) == presses
+
+
+def test_speed_presses():
+    assert wb.speed_presses(1.0) == [("shift+,", 8), ("shift+.", 3)]
+    assert wb.speed_presses(0.1) == [("shift+,", 8)]
+    assert wb.speed_presses(5) == [("shift+,", 8), ("shift+.", 7)]
+
+
+def test_looks_like_result():
+    assert wb.looks_like_result("Python dasturlash tili — Vikipediya")
+    assert not wb.looks_like_result("Images")
+    assert not wb.looks_like_result("3")
+    assert not wb.looks_like_result("https://example.com/some/long/path")
+
+
+@pytest.fixture
+def browser(monkeypatch):
+    b = wb.WindowsBrowser()
+    sent: list[tuple] = []
+
+    async def fake_window(browser):
+        return _bw("chrome", "Lofi beats - YouTube - Google Chrome", 7)
+
+    async def fake_keys(browser, *combos):
+        sent.extend(combos)
+        return _bw("chrome", "x", 7), ""
+
+    async def fake_playing(browser):
+        return True
+
+    monkeypatch.setattr(b, "_window", fake_window)
+    monkeypatch.setattr(b, "_keys", fake_keys)
+    monkeypatch.setattr(b, "_is_playing", fake_playing)
+    return b, sent
+
+
+async def test_youtube_uses_player_keys(browser):
+    b, sent = browser
+    assert (await b.toggle_play(""))[0] and sent[-1] == ("k", 1)
+    ok, out = await b.play("")  # allaqachon ijroda — klavish bosilmaydi
+    assert ok and "allaqachon" in out and len(sent) == 1
+    assert (await b.pause(""))[0] and sent[-1] == ("k", 1)
+    await b.seek("", -25)
+    assert sent[-2:] == [("j", 2), ("left", 1)]
+    await b.set_player_volume("", 30)
+    assert sent[-2:] == [("down", 20), ("up", 6)]
+    await b.next_video("")
+    assert sent[-1] == ("shift+n", 1)
+
+
+async def test_youtube_refuses_non_youtube_tab(browser, monkeypatch):
+    b, sent = browser
+
+    async def other(browser):
+        return _bw("chrome", "Gmail - Google Chrome", 7)
+
+    monkeypatch.setattr(b, "_window", other)
+    ok, out = await b.toggle_play("")
+    assert not ok and "YouTube emas" in out and sent == []
+
+
+async def test_browser_scroll_and_tabs_keys(browser):
+    b, sent = browser
+    await b.scroll_page("", "down", 1200)
+    assert sent[-1] == ("pagedown", 2)
+    await b.close_current_tab("")
+    assert sent[-1] == ("ctrl+w", 1)
+    ok, _out = await b.scroll_page("", "sideways")
+    assert not ok
+
+
+def test_windows_declarations_adapted(monkeypatch):
+    monkeypatch.setattr(reg_mod, "IS_WINDOWS", True)
+    reg = reg_mod.ToolRegistry(None, None)
+    decls = {d["name"]: d for d in reg.declarations()}
+    assert decls["browser_scroll"]["parameters"]["properties"]["browser"]["enum"] == ["chrome", "edge", "firefox"]
+    assert "Safari" not in decls["browser_open_url"]["description"]
+    assert "browser_click_selector" not in decls
+    # macOS deklaratsiyalari o'zgarmagan (nusxa olingan)
+    assert {d["name"]: d for d in ALL_TOOL_DECLARATIONS}["browser_scroll"]["parameters"]["properties"]["browser"]["enum"] == [
+        "safari",
+        "chrome",
+    ]

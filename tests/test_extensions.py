@@ -9,8 +9,8 @@ from pathlib import Path
 import pytest
 
 from nexus import ax_actions as ax
-from tests.conftest import POSIX_ONLY
 from nexus import file_actions as fa
+from tests.conftest import POSIX_ONLY
 
 VALID_TYPES = {"OBJECT", "STRING", "INTEGER", "NUMBER", "BOOLEAN", "ARRAY"}
 

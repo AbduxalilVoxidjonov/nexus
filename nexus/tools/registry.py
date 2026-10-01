@@ -102,17 +102,19 @@ class ToolRegistry:
         self.bus = bus
         self.settings = settings
         if IS_WINDOWS:
-            from nexus.windows_actions import WindowsBrowserController, WindowsController
+            from nexus.windows_actions import WindowsController
+            from nexus.windows_browser import WindowsBrowser
 
             self.mac = WindowsController()
-            self.tabs = WindowsBrowserController()
+            # bitta obyekt macOS'dagi beshta brauzer sinfining API'sini beradi
+            self.tabs = self.dom = self.youtube = self.search = self.search_input = WindowsBrowser()
         else:
             self.mac = MacOSController()
             self.tabs = BrowserController()
-        self.dom = BrowserDOMController()
-        self.youtube = YouTubeController(self.dom)
-        self.search = SearchNavigationController(self.dom, self.tabs)
-        self.search_input = SearchInputController(self.dom)
+            self.dom = BrowserDOMController()
+            self.youtube = YouTubeController(self.dom)
+            self.search = SearchNavigationController(self.dom, self.tabs)
+            self.search_input = SearchInputController(self.dom)
         self.confirm_ttl = float(
             getattr(settings, "confirm_ttl_s", DEFAULT_CONFIRM_TTL) or DEFAULT_CONFIRM_TTL
         )
@@ -132,9 +134,9 @@ class ToolRegistry:
         self._handlers: dict[str, Handler] = self._build_handlers()
         if IS_WINDOWS:
             # Windows ekvivalenti hali yo'q toollar Gemini'ga e'lon qilinmaydi
-            from nexus.windows_actions import SUPPORTED_TOOLS
+            from nexus.windows_actions import SUPPORTED_TOOLS, adapt_declaration
 
-            self._decls = {k: v for k, v in self._decls.items() if k in SUPPORTED_TOOLS}
+            self._decls = {k: adapt_declaration(v) for k, v in self._decls.items() if k in SUPPORTED_TOOLS}
         self.extensions: list[str] = []
         self._load_extensions()
 
@@ -535,6 +537,8 @@ class ToolRegistry:
     # Handlerlar
     # ------------------------------------------------------------------
     def _browser(self, args: dict) -> str:
+        if IS_WINDOWS:  # chrome/edge/firefox — WindowsBrowser o'zi tanlaydi (bo'sh — istalgan brauzer)
+            return str(args.get("browser") or "")
         return normalize_browser(args.get("browser")) or DEFAULT_BROWSER
 
     def _build_handlers(self) -> dict[str, Handler]:

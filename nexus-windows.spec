@@ -22,6 +22,8 @@ for pkg in ('webview', '_sounddevice_data', 'uiautomation', 'comtypes'):
     datas += d
     binaries += b
     hiddenimports += h
+# Paketlarning o'z testlari .exe'ga kirmasin (hajm)
+hiddenimports = [m for m in hiddenimports if '.tests' not in m and '.test.' not in m and not m.endswith('.test')]
 
 a = Analysis(
     ['nexus/main.py'],
@@ -33,7 +35,8 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     # macOS-only modullar Windows'da kerak emas
-    excludes=['AppKit', 'Foundation', 'Quartz', 'WebKit', 'Vision', 'objc', 'PyObjCTools', 'tkinter'],
+    excludes=['AppKit', 'Foundation', 'Quartz', 'WebKit', 'Vision', 'objc', 'PyObjCTools', 'tkinter',
+              'google.genai.tests', 'comtypes.test', 'webview.platforms.android', 'pytest'],
     noarchive=False,
     optimize=0,
 )

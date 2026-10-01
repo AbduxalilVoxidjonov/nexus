@@ -102,9 +102,9 @@
     "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
   },
   "nexus/tools/registry.py": {
-    "mtime": 1790845039.2705595,
-    "seen": 1790845260.54378,
-    "ast_hash": "1bbc1b93d9ed7b424bc61c3e509a2e9e",
+    "mtime": 1790845832.382832,
+    "seen": 1790845879.83653,
+    "ast_hash": "6ffdaea6c68295feded3a21b1ae40c2e",
     "semantic_hash": ""
   },
   "nexus/tools/schemas.py": {
@@ -126,9 +126,9 @@
     "semantic_hash": "b663fb97fbc84b77655483fe9df08dc7"
   },
   "pyproject.toml": {
-    "mtime": 1790845160.6625364,
-    "seen": 1790845260.543783,
-    "ast_hash": "50fa2f1c4a02ed80d0876a04f82eca64",
+    "mtime": 1790845832.382906,
+    "seen": 1790845879.836534,
+    "ast_hash": "eec203d17ea9a085a54b928c2a3f3ac8",
     "semantic_hash": ""
   },
   "scripts/benchmark_live.py": {
@@ -276,21 +276,21 @@
     "semantic_hash": ""
   },
   "nexus/windows_actions.py": {
-    "mtime": 1790845619.1153064,
-    "seen": 1790845685.75108,
-    "ast_hash": "0925d97e8db71ba234d49081f994bce7",
+    "mtime": 1790845832.3827286,
+    "seen": 1790845879.8365319,
+    "ast_hash": "11db2b645b0471d3ca997e545d48de9a",
     "semantic_hash": ""
   },
   "scripts/windows_smoke.py": {
-    "mtime": 1790845659.674159,
-    "seen": 1790845685.751083,
-    "ast_hash": "d4ef6bcec1899772467ef66ae5ac6059",
+    "mtime": 1790845857.3949685,
+    "seen": 1790845879.8365362,
+    "ast_hash": "2904d1251fdbae490dbc0759f523080c",
     "semantic_hash": ""
   },
   "tests/test_windows.py": {
-    "mtime": 1790845684.864359,
-    "seen": 1790845685.7510881,
-    "ast_hash": "515db766c9f99c98f573904db3250634",
+    "mtime": 1790845862.3940592,
+    "seen": 1790845879.836541,
+    "ast_hash": "fae4ea3a3f24d123010a8502f75fc46d",
     "semantic_hash": ""
   },
   ".github/workflows/windows-exe.yml": {
@@ -309,6 +309,12 @@
     "mtime": 1790845549.2153325,
     "seen": 1790845685.75108,
     "ast_hash": "e7cff529192a4d3083d147cef846bec2",
+    "semantic_hash": ""
+  },
+  "nexus/windows_screen.py": {
+    "mtime": 1790845878.9021819,
+    "seen": 1790845879.836533,
+    "ast_hash": "fcd4b38b601b1fe0c176b14e4787a525",
     "semantic_hash": ""
   }
 }

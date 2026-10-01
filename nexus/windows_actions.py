@@ -22,7 +22,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from nexus.browser_actions import normalize_url
 from nexus.config import settings
 from nexus.macos_actions import (
     APP_CACHE_TTL,
@@ -73,6 +72,19 @@ SUPPORTED_TOOLS = frozenset(
         "stop_conversation",
         "browser_open_url",
         "web_search",
+        "browser_switch_tab",
+        "browser_close_tab",
+        "browser_reload",
+        "browser_current_page",
+        "browser_list_tabs",
+        "browser_scroll",
+        "browser_click_button",
+        "browser_read_page",
+        "browser_type_and_search",
+        "search_get_results",
+        "search_open_result",
+        "search_navigate_page",
+        "youtube_control",
         "type_text",
         "press_hotkey",
         "run_terminal_command",
@@ -615,23 +627,33 @@ class WindowsController(MacOSController):
         return {"hints": [], "message": "Windows: alohida ruxsat talab qilinmaydi."}
 
 
-class WindowsBrowserController:
-    """Windows'da brauzer: hozircha faqat URL'ni standart (yoki tanlangan) brauzerda ochish."""
+WINDOWS_BROWSER_PARAM: dict[str, Any] = {
+    "type": "STRING",
+    "enum": ["chrome", "edge", "firefox"],
+    "description": "Which browser to control. If unspecified by the user, leave empty (the open browser is used).",
+}
 
-    async def open_url(self, browser: str, url: str) -> Result:
-        target = normalize_url(url)
-        ok = await asyncio.to_thread(webbrowser.open, target, 2)
-        if not ok:
-            return False, f"Sahifani ochib bo'lmadi: {target}"
-        return True, f"Brauzerda ochildi: {target}"
+
+def adapt_declaration(decl: dict[str, Any]) -> dict[str, Any]:
+    """Tool deklaratsiyasini Windows'ga moslaydi: brauzer enum'i, macOS so'zlari."""
+    props = (decl.get("parameters") or {}).get("properties") or {}
+    desc = str(decl.get("description", ""))
+    for old, new in (("Safari or Chrome", "the browser"), ("macOS ", ""), ("Finder", "File Explorer"), ("cmd+", "ctrl+")):
+        desc = desc.replace(old, new)
+    if "browser" not in props and desc == decl.get("description"):
+        return decl
+    out = {**decl, "description": desc}
+    if "browser" in props:
+        out["parameters"] = {**decl["parameters"], "properties": {**props, "browser": WINDOWS_BROWSER_PARAM}}
+    return out
 
 
 __all__ = [
     "SUPPORTED_EXTENSIONS",
     "SUPPORTED_TOOLS",
-    "WindowsBrowserController",
     "WindowsCommandGuard",
     "WindowsController",
+    "adapt_declaration",
     "run_powershell",
     "start_menu_apps",
 ]
