@@ -58,6 +58,19 @@ async def uia_dump() -> None:
                           [(k.ControlTypeName, k.Name[:30]) for k in kids[:8]])
             renders = [c for c in items if "RenderWidgetHost" in (c.ClassName or "")]
             print("  RenderWidgetHost:", [(c.ControlTypeName, c.ClassName) for c in renders[:3]])
+            from nexus.windows_browser import document_tree, wake_renderers
+
+            print("  uyg'otildi:", wake_renderers(items, auto))
+            import time
+
+            time.sleep(2)
+            for c in _walk(root, 5000):
+                if c.ControlTypeName == "DocumentControl" and (c.ClassName or "") not in ("WebView", "HubWebView"):
+                    kids = _walk(c, 300)
+                    print(f"  keyin Document: name={c.Name!r} ichida={len(kids)}",
+                          [(k.ControlTypeName, k.Name[:25]) for k in kids[1:7]])
+            tree = document_tree(root, wins[0].page_title)
+            print("  document_tree:", len(tree), [(k.ControlTypeName, k.Name[:25]) for k in tree[:6]])
 
     try:
         await asyncio.to_thread(work)

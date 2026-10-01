@@ -525,3 +525,23 @@ def test_document_tree_retries_until_filled(monkeypatch):
     monkeypatch.setattr(wb, "DOC_RETRY_S", 0)
     items = wb.document_tree(SimpleNamespace(ControlTypeName="PaneControl"), "Sahifa")
     assert len(items) == 4 and calls["n"] == 3
+
+
+async def test_click_falls_back_to_find_in_page(browser, monkeypatch):
+    b, sent = browser
+
+    async def no_match(hwnd, fn):
+        return False, "topilmadi"
+
+    async def focused(browser):
+        return _bw("chrome", "x", 7), ""
+
+    typed: list[str] = []
+    monkeypatch.setattr(b, "_uia_run", no_match)
+    monkeypatch.setattr(b, "_focused", focused)
+    monkeypatch.setattr(wi, "type_unicode", typed.append)
+    monkeypatch.setattr(wi, "press_combo", lambda k: sent.append((k, 1)))
+    monkeypatch.setattr(wi, "press_enter", lambda: sent.append(("enter", 1)))
+    ok, out = await b.click_by_text("", "Kirish")
+    assert ok and "klaviatura" in out
+    assert typed == ["Kirish"] and sent == [("ctrl+f", 1), ("esc", 1), ("enter", 1)]

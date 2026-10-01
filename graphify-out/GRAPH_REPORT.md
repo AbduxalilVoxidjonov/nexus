@@ -1,17 +1,17 @@
 # Graph Report - nexus  (2026-10-01)
 
 ## Corpus Check
-- 52 files · ~110,293 words
+- 52 files · ~110,482 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 10 file(s) not represented in the graph (top: (none) 4, .command 2, .example 1)
 
 ## Summary
-- 2246 nodes · 4948 edges · 131 communities (100 shown, 31 thin omitted)
+- 2250 nodes · 4955 edges · 129 communities (99 shown, 30 thin omitted)
 - Extraction: 93% EXTRACTED · 7% INFERRED · 0% AMBIGUOUS · INFERRED: 333 edges (avg confidence: 0.86)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `74ba4159`
+- Built from commit: `3e0ff70d`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -32,12 +32,12 @@
 - test_server.py
 - windows_screen.py
 - state_style
-- Result
+- WindowsController
 - screen_reader.py
 - test_screen_reader.py
 - ToolRegistry
 - path_is_sensitive
-- desktop.py
+- document_tree
 - check_setup.py
 - ._process_chunk
 - WakeState
@@ -45,23 +45,23 @@
 - DesktopPrefs
 - ws_reconnect_harness.js
 - create_app
-- WindowsBrowser
+- Result
 - ConfirmationGate
 - test_wake_dictation.py
 - AudioStreamer
 - Any
 - CommandGuard
-- windows_input.py
-- Settings
+- windows_browser.py
+- DaemonRunner
 - test_run_waits_for_api_key_from_settings
 - config.py
-- cli
+- desktop.py
 - test_windows.py
 - test_core.py
 - ._evaluate_addressed
 - FakeAudio
 - test_desktop.py
-- macos_actions.py
+- video_translate.py
 - ._window
 - Any
 - .run
@@ -72,34 +72,34 @@
 - test_video_translate.py
 - DictationState
 - .tick
-- web_search
-- VideoTranslator
+- Settings
+- Segment
 - ocr_image
 - file_actions.py
-- run
+- main.py
 - ._handle_server_content
 - Process
 - schemas.py
-- NexusOrbPanel
+- _ConfirmTracker
 - normalise
 - fake_screen
 - Any
-- build_ytdlp_cmd
+- ._translate
 - is_config_rejection
 - test_extensions.py
 - test_registry_no_confirmation_runs_immediately
 - LoopGuard
 - ._build_window
-- run_shell
+- resolve_path
 - nexus/__init__.py
-- gemini_live_client.py
+- wake.py
 - build_app.sh
 - web_answer.py
 - nexus-voice
 - desktop_win.py
 - FakeStream
 - BaseException
-- ._run
+- VideoTranslator
 - PlaybackClock
 - benchmark_live.py
 - CLAUDE.md
@@ -110,19 +110,18 @@
 - test_safety.py
 - match_app
 - Orb overlay page (orb.html)
-- windows_smoke.py
-- vision_box_to_screen
+- is_junk_translation
+- normalize_browser
 - Process
-- player_setup_js
+- _conversation
 - Path
 - Result
 - .get_system_info
-- _recognize
-- .open
+- is_quota_error
+- sandbox
 - Security model (confirmation from user transcript/UI only)
-- sensitivity_to_threshold
+- _cmd
 - ._confirmation_pending
-- error_text
 - fixture
 - parametrize
 - AbstractEventLoop
@@ -131,14 +130,13 @@
 - Queue
 - Mic -> AudioStreamer -> GeminiLiveClient -> ToolRegistry -> EventBus -> UI pipeline
 - Path
-- is_terminal_app
+- test_is_terminal_frontmost
 - pytest
 - Settings
 - _coerce_cell_value
 - TaintTracker
 - test_registry_loads_extension_modules
 - EventBus
-- .kill_all
 - Verdict
 - test_ws_slow_command_does_not_block_following_commands
 - installed_apps
@@ -162,14 +160,14 @@
 ## Surprising Connections (you probably didn't know these)
 - `Confirmation card (TASDIQ KUTILMOQDA, Yes/No, TTL)` --shares_data_with--> `ConfirmationGate`  [INFERRED]
   ui/index.html → nexus/safety.py
-- `session.receive() ends each turn (not a disconnect)` --rationale_for--> `GeminiLiveClient`  [INFERRED]
-  README.md → nexus/gemini_live_client.py
 - `Echo guard + playback prebuffer + low VAD start sensitivity` --rationale_for--> `AudioStreamer`  [INFERRED]
   README.md → nexus/audio_streamer.py
-- `.env settings (GEMINI_MODEL, VAD_THRESHOLD, WAKE_MODE, UI_PORT ...)` --references--> `Settings`  [EXTRACTED]
-  README.md → nexus/config.py
+- `session.receive() ends each turn (not a disconnect)` --rationale_for--> `GeminiLiveClient`  [INFERRED]
+  README.md → nexus/gemini_live_client.py
 - `ToolRegistry.execute flow: validate -> loop guard -> taint -> confirm -> handler` --references--> `ToolRegistry`  [EXTRACTED]
   README.md → nexus/tools/registry.py
+- `CommandGuard allow/deny/confirm tiers` --references--> `CommandGuard`  [EXTRACTED]
+  README.md → nexus/macos_actions.py
 
 ## Import Cycles
 - None detected.
@@ -179,15 +177,15 @@
 - **Echo / self-hearing mitigation** — readme_echo_guard, reference_analysis_live_api_findings, nexus_audio_streamer_audiostreamer, nexus_audio_streamer_audioplayer [INFERRED 0.85]
 - **WebSocket /ws event consumers** — readme_ui_event_contract, ui_index, ui_orb, nexus_events_eventbus [INFERRED 0.85]
 
-## Communities (131 total, 31 thin omitted)
+## Communities (129 total, 30 thin omitted)
 
 ### Community 0 - "support.js"
 Cohesion: 0.06
 Nodes (75): boot(), bundledBlob(), cdnScriptFor(), collectProps(), compileAttr(), compileTemplate(), contentKey(), createComponentFactory() (+67 more)
 
 ### Community 1 - "Any"
-Cohesion: 0.31
-Nodes (20): _append_csv(), _append_row_sync(), _append_xlsx(), delete_file(), _is_confirmed(), _list_directory_sync(), _open_book(), path_allowed() (+12 more)
+Cohesion: 0.28
+Nodes (20): _append_csv(), _append_row_sync(), append_spreadsheet_row(), _append_xlsx(), delete_file(), _is_confirmed(), _open_book(), Any (+12 more)
 
 ### Community 2 - "ax_actions.py"
 Cohesion: 0.06
@@ -195,7 +193,7 @@ Nodes (75): applicationservices, difflib, _actions(), activate_element(), _app_r
 
 ### Community 3 - "Result"
 Cohesion: 0.06
-Nodes (28): app_name(), BrowserController, BrowserDOMController, _fmt_time(), _js_error(), js_to_applescript(), normalize_url(), _parse_json() (+20 more)
+Nodes (32): EventBus, app_name(), BrowserController, BrowserDOMController, build_search_url(), _fmt_time(), _js_error(), js_to_applescript() (+24 more)
 
 ### Community 4 - "GeminiLiveClient"
 Cohesion: 0.18
@@ -210,12 +208,12 @@ Cohesion: 0.12
 Nodes (58): answerConfirm(), applyDevices(), applySettings(), applySnapshot(), bind(), closeSocket(), connect(), ensureRow() (+50 more)
 
 ### Community 7 - "test_tools.py"
-Cohesion: 0.08
-Nodes (27): _no_sleep(), MonkeyPatch, Tool qatlami testlari — real macOS tizimiga tegmaydi (osascript/subprocess…, Barcha ichki JS'lar AppleScript literaliga qo'yilganda qo'shtirnoq muvozanati…, ScriptRecorder, test_browser_open_url_normalizes(), test_is_terminal_frontmost(), test_launch_app_uses_fuzzy_match() (+19 more)
+Cohesion: 0.07
+Nodes (31): nexus_tools, _no_sleep(), MonkeyPatch, Tool qatlami testlari — real macOS tizimiga tegmaydi (osascript/subprocess…, Barcha ichki JS'lar AppleScript literaliga qo'yilganda qo'shtirnoq muvozanati…, ScriptRecorder, test_as_str_escapes_quotes_and_backslashes(), test_browser_open_url_normalizes() (+23 more)
 
 ### Community 8 - "EventBus"
-Cohesion: 0.16
-Nodes (7): CommandHandler, EventBus, AbstractEventLoop, Any, Queue, Thread-safe pub/sub. `publish` istalgan thread'dan chaqirilishi mumkin., test_ws_get_state_without_handler()
+Cohesion: 0.17
+Nodes (6): CommandHandler, EventBus, AbstractEventLoop, Any, Queue, Thread-safe pub/sub. `publish` istalgan thread'dan chaqirilishi mumkin.
 
 ### Community 9 - "Nexus Ovoz OS README"
 Cohesion: 0.22
@@ -223,7 +221,7 @@ Nodes (11): Nexus Ovoz OS README, AXManualAccessibility for Chrome/Electron, Dic
 
 ### Community 10 - "._build_handlers"
 Cohesion: 0.06
-Nodes (18): browser_click_button(), browser_click_selector(), browser_close_tab(), browser_current_page(), browser_list_tabs(), browser_open_url(), browser_read_page(), browser_reload() (+10 more)
+Nodes (16): browser_click_button(), browser_click_selector(), browser_close_tab(), browser_current_page(), browser_list_tabs(), browser_open_url(), browser_read_page(), browser_reload() (+8 more)
 
 ### Community 11 - "NexusDesktopApp"
 Cohesion: 0.09
@@ -231,47 +229,47 @@ Nodes (8): _load_url(), NexusDesktopApp, Any, NSApplication delegati: oyna, orb,
 
 ### Community 12 - "MacOSController"
 Cohesion: 0.14
-Nodes (8): _clamp(), MacOSController, Result, AppleScript'ni `osascript` orqali bajaradi (stdin orqali, argument uzunligi…, macOS bilan ishlash: ovoz, media, ilovalar, Finder, tizim, terminal., macOS 12+ da DND uchun ochiq API yo'q. Foydalanuvchi yaratgan Shortcuts…, Faol oynaga matn kiritadi: bufer + Cmd+V (keystroke o'zbek/kirill matnni…, run_applescript()
+Nodes (7): _clamp(), MacOSController, Result, Buyruqni qo'riqchi orqali bajaradi. `confirmed=True` — registry foydalanuvchi…, macOS bilan ishlash: ovoz, media, ilovalar, Finder, tizim, terminal., macOS 12+ da DND uchun ochiq API yo'q. Foydalanuvchi yaratgan Shortcuts…, Faol oynaga matn kiritadi: bufer + Cmd+V (keystroke o'zbek/kirill matnni…
 
 ### Community 13 - "test_server.py"
 Cohesion: 0.16
 Nodes (14): fastapi_testclient, TestClient, bus(), client(), _free_port(), fixture, nexus.server (FastAPI + WS ko'prigi) testlari., test_api_state() (+6 more)
 
 ### Community 14 - "windows_screen.py"
-Cohesion: 0.10
-Nodes (53): io, work(), run(), _activate(), _ask_gemini(), capture_window_jpeg(), _click_point(), _click_sync() (+45 more)
+Cohesion: 0.08
+Nodes (62): io, work(), run(), _activate(), _ask_gemini(), capture_window_jpeg(), _click_point(), _click_sync() (+54 more)
 
 ### Community 15 - "state_style"
 Cohesion: 0.22
 Nodes (10): effective_state(), (rang, yorliq) — menyu bar / orb uchun., Menyu bar'dagi holat satri, masalan "● Tinglamoqda" yoki "● Kutmoqda (mikrofon…, Daemon holati + Gemini ulanishi + tasdiqdan bitta ko'rsatiladigan holat., state_style(), status_title(), parametrize, test_effective_state_priorities() (+2 more)
 
-### Community 16 - "Result"
-Cohesion: 0.10
-Nodes (11): MacOSController, _press_key(), _ps_quote(), PowerShell bitta qo'shtirnoqli literal., PowerShell skriptini konsol oynasiz bajaradi; chiqish UTF-8., Windows bilan ishlash: ovoz, media, ilovalar, Explorer, tizim., Faol oynaga matn teradi (SendInput Unicode — bufer o'zgarmaydi)., run_powershell() (+3 more)
+### Community 16 - "WindowsController"
+Cohesion: 0.07
+Nodes (7): MacOSController, _press_key(), PowerShell skriptini konsol oynasiz bajaradi; chiqish UTF-8., Windows bilan ishlash: ovoz, media, ilovalar, Explorer, tizim., Faol oynaga matn teradi (SendInput Unicode — bufer o'zgarmaydi)., run_powershell(), WindowsController
 
 ### Community 17 - "screen_reader.py"
-Cohesion: 0.12
-Nodes (31): appkit, foundation, available(), capture_frontmost_window(), describe_screen(), _shoot(), _extract_text(), _front_app() (+23 more)
+Cohesion: 0.09
+Nodes (41): appkit, foundation, available(), capture_frontmost_window(), describe_screen(), _shoot(), error_text(), _extract_text() (+33 more)
 
 ### Community 18 - "test_screen_reader.py"
-Cohesion: 0.11
-Nodes (13): Exception, inspect, _fake_client(), _FakeModels, screen_reader (OCR + Gemini ko'rish) va ax_actions'dagi AX→OCR zaxira yo'li…, test_click_ui_element_by_ocr_index_from_cache(), test_describe_screen_default_question(), test_describe_screen_error_and_timeout() (+5 more)
+Cohesion: 0.10
+Nodes (15): Exception, inspect, subprocess, _fake_client(), _FakeModels, Any, screen_reader (OCR + Gemini ko'rish) va ax_actions'dagi AX→OCR zaxira yo'li…, test_click_ui_element_by_ocr_index_from_cache() (+7 more)
 
 ### Community 19 - "ToolRegistry"
 Cohesion: 0.10
-Nodes (12): EventBus, Foydalanuvchi yangi gap boshladi: loop guard va taint tozalanadi., Foydalanuvchining yakuniy transkripti — og'zaki tasdiq uchun., Gemini toollarini bajaruvchi markaziy ro'yxat., ToolRegistry, test_conversation_tools_registered(), test_registry_has_handler_for_every_declaration(), test_registry_unknown_tool() (+4 more)
+Nodes (11): Foydalanuvchi yangi gap boshladi: loop guard va taint tozalanadi., Foydalanuvchining yakuniy transkripti — og'zaki tasdiq uchun., Bajarilayotgan tool tasklarini bekor qiladi. Kutilayotgan tasdiq so'roviga…, ⌥⎋ / "kill_all": tool tasklar + kutilayotgan tasdiq bekor qilinadi, so'ng…, Gemini toollarini bajaruvchi markaziy ro'yxat., ToolRegistry, test_conversation_tools_registered(), test_registry_has_handler_for_every_declaration() (+3 more)
 
 ### Community 20 - "path_is_sensitive"
 Cohesion: 0.13
 Nodes (17): Verdict, Buyruqni tokenlarga bo'lish (POSIX qoidalari). Windows qo'riqchisi qayta…, looks_read_only(), path_is_sensitive(), Path, True — buyruq DANGEROUS_SHELL naqshlaridan biriga mos keladi., True — buyruq HECH QANDAY bayroq bilan ham hech narsani o'zgartira olmaydi., True — bu yerga yozish persistensiya yaratishi yoki sir sizdirishi mumkin. (+9 more)
 
-### Community 21 - "desktop.py"
-Cohesion: 0.11
-Nodes (22): asyncio, collections, collections_abc, Mikrofon oqimi va ovoz ijrosi (sounddevice / PortAudio). `AudioStreamer` —…, Desktop ilova qatlami: o'z oynasi, doim tepada turadigan orb va menyu bar…, Daemon ichidagi hodisalar shinasi (event bus). Barcha modullar (audio, gemini,…, Nexus Ovoz OS — CLI kirish nuqtasi (`nexus` buyrug'i). nexus # desktop ilova:…, YouTube videosini jonli (sinxron) ovozli tarjima: ingliz → o'zbek. Oqim: yt-dlp… (+14 more)
+### Community 21 - "document_tree"
+Cohesion: 0.20
+Nodes (9): Any, document_tree(), pick_page_document(), Sahifa hujjatining indeksi: sarlavhasi tab sarlavhasiga teng → eng ko'p…, Sahifa (DocumentControl) elementlari. Chromium veb-kontent daraxtini UIA mijozi…, work(), work(), test_document_tree_retries_until_filled() (+1 more)
 
 ### Community 22 - "check_setup.py"
-Cohesion: 0.16
-Nodes (21): argparse, CDLL, check_accessibility(), check_automation(), check_devices(), check_key(), check_live(), check_mic_level() (+13 more)
+Cohesion: 0.30
+Nodes (14): CDLL, check_accessibility(), check_automation(), check_devices(), check_key(), check_live(), check_mic_level(), check_packages() (+6 more)
 
 ### Community 23 - "._process_chunk"
 Cohesion: 0.12
@@ -294,12 +292,12 @@ Cohesion: 0.12
 Nodes (9): ref_fs, byId(), els, FakeWS, fs, listeners, makeEl(), sockets (+1 more)
 
 ### Community 28 - "create_app"
-Cohesion: 0.12
-Nodes (10): _ConfirmTracker, create_app(), index(), EventBus, Path, Settings, FastAPI ilovasini yaratadi (testlarda ham shu ishlatiladi)., CONFIRM_REQUEST / CONFIRM_RESOLVED hodisalarini kuzatib, ochiq tasdiqni eslab… (+2 more)
+Cohesion: 0.20
+Nodes (6): create_app(), index(), Path, Settings, FastAPI ilovasini yaratadi (testlarda ham shu ishlatiladi)., test_ws_receives_published_events()
 
-### Community 29 - "WindowsBrowser"
-Cohesion: 0.11
-Nodes (4): looks_like_result(), Brauzer amallari — macOS'dagi BrowserController/DOM/YouTube/Search sinflari…, WindowsBrowser, test_looks_like_result()
+### Community 29 - "Result"
+Cohesion: 0.15
+Nodes (5): Nisbiy siljish → klavishlar: 10 s lik l/j, qoldig'i 5 s lik o'qlar., Brauzer amallari — macOS'dagi BrowserController/DOM/YouTube/Search sinflari…, seek_presses(), WindowsBrowser, Result
 
 ### Community 30 - "ConfirmationGate"
 Cohesion: 0.16
@@ -310,24 +308,24 @@ Cohesion: 0.12
 Nodes (26): is_stop_phrase(), Butun gap faqat to'xtash iborasidan iboratmi?, _candidates(), levenshtein(), name_in(), Levenshtein masofasi; `limit` berilsa undan oshgach hisoblashni to'xtatadi…, Qisqa ism aniq mos kelishi kerak; uzunroq ism 2-3 xatoni ko'taradi., (nomzod, boshlanish indeksi, so'zlar soni) — yakka so'zlar va qo'shni… (+18 more)
 
 ### Community 32 - "AudioStreamer"
-Cohesion: 0.06
-Nodes (24): AbstractEventLoop, AudioStreamer, _list_devices(), _mute(), _playback(), _ptt(), _ptt_press(), _sensitivity() (+16 more)
+Cohesion: 0.07
+Nodes (18): AudioStreamer, _list_devices(), _mute(), _playback(), _ptt(), _ptt_press(), _sensitivity(), _set_device() (+10 more)
 
 ### Community 33 - "Any"
-Cohesion: 0.15
-Nodes (8): Handler, normalize_browser(), Any, Handler javobini (tuple yoki dict) yagona formatga keltiradi., Bajarishdan OLDIN aniqlanadigan tasdiq sabablari (bo'sh — tasdiqsiz)., _to_text(), _truncate(), translate_video()
+Cohesion: 0.17
+Nodes (6): Handler, Any, Handler javobini (tuple yoki dict) yagona formatga keltiradi., Bajarishdan OLDIN aniqlanadigan tasdiq sabablari (bo'sh — tasdiqsiz)., _to_text(), _truncate()
 
 ### Community 34 - "CommandGuard"
+Cohesion: 0.22
+Nodes (9): CommandGuard, `run_terminal_command` uchun uch pog'onali qo'riqchi. `check()` → ("allow" |…, Tekshiruvdan o'tgan buyruqni bajarish uchun argv (`~` kengaytirilgan holda)., parametrize, test_guard_allows(), test_guard_argv_expands_tilde(), test_guard_confirms(), test_guard_denies() (+1 more)
+
+### Community 35 - "windows_browser.py"
+Cohesion: 0.13
+Nodes (18): ctypes, Windows'da brauzer boshqaruvi: UI Automation + klaviatura (Chrome, Edge,…, combo_events(), INPUT, _INPUTUNION, KEYBDINPUT, MOUSEINPUT, press_combo() (+10 more)
+
+### Community 36 - "DaemonRunner"
 Cohesion: 0.16
-Nodes (11): CommandGuard, Buyruqni qo'riqchi orqali bajaradi. `confirmed=True` — registry foydalanuvchi…, `run_terminal_command` uchun uch pog'onali qo'riqchi. `check()` → ("allow" |…, Tekshiruvdan o'tgan buyruqni bajarish uchun argv (`~` kengaytirilgan holda)., _truncate(), parametrize, test_guard_allows(), test_guard_argv_expands_tilde() (+3 more)
-
-### Community 35 - "windows_input.py"
-Cohesion: 0.10
-Nodes (26): Nisbiy siljish → klavishlar: 10 s lik l/j, qoldig'i 5 s lik o'qlar., seek_presses(), combo_events(), HotkeyError, INPUT, _INPUTUNION, KEYBDINPUT, MOUSEINPUT (+18 more)
-
-### Community 36 - "Settings"
-Cohesion: 0.11
-Nodes (10): google-genai Client — hamma joyda bir xil sozlama bilan., Settings, DaemonRunner, `nexus.main.run()` ni alohida thread'da o'z event loop'i bilan yuritadi., To'xtatish signalini beradi (bloklamaydi) — tugashini `finished` orqali…, To'xtatish signalini beradi va thread tugashini kutadi. True = toza tugadi., GUI'dan daemon'ga buyruq (thread-safe, natija kutilmaydi)., test_config_defaults_gemini38() (+2 more)
+Nodes (5): DaemonRunner, `nexus.main.run()` ni alohida thread'da o'z event loop'i bilan yuritadi., To'xtatish signalini beradi (bloklamaydi) — tugashini `finished` orqali…, To'xtatish signalini beradi va thread tugashini kutadi. True = toza tugadi., GUI'dan daemon'ga buyruq (thread-safe, natija kutilmaydi).
 
 ### Community 37 - "test_run_waits_for_api_key_from_settings"
 Cohesion: 0.10
@@ -335,19 +333,19 @@ Nodes (10): FakeLiveConnect, 1011 'exceeded your current quota' → avval google
 
 ### Community 38 - "config.py"
 Cohesion: 0.11
-Nodes (25): dotenv, api_key_env_path(), _describe_char(), _env_api_key(), env_candidates(), is_placeholder_api_key(), load_env_files(), load_extra_env() (+17 more)
+Nodes (24): dotenv, api_key_env_path(), api_key_hint(), _describe_char(), _env_api_key(), env_candidates(), is_placeholder_api_key(), load_env_files() (+16 more)
 
-### Community 39 - "cli"
-Cohesion: 0.14
-Nodes (13): DesktopOptions, _env_true(), Desktop ilovani ishga tushiradi (asosiy thread'da bloklaydi). Qaytadi: chiqish…, argparse Namespace (nexus.main.build_parser) → DesktopOptions., Ilova menyusida (chap yuqori) "python" o'rniga ilova nomi (bundle'siz ishga…, run_desktop(), _set_process_display_name(), cli() (+5 more)
+### Community 39 - "desktop.py"
+Cohesion: 0.10
+Nodes (17): DesktopOptions, _env_true(), _make_app_icon(), NexusOrbPanel, Desktop ilova qatlami: o'z oynasi, doim tepada turadigan orb va menyu bar…, Desktop ilovani ishga tushiradi (asosiy thread'da bloklaydi). Qaytadi: chiqish…, argparse Namespace (nexus.main.build_parser) → DesktopOptions., Ilova menyusida (chap yuqori) "python" o'rniga ilova nomi (bundle'siz ishga… (+9 more)
 
 ### Community 40 - "test_windows.py"
 Cohesion: 0.04
-Nodes (39): fixture, nexus_tools, browser_key(), pick_window(), Tezlik: avval minimal (0.25) gacha tushirib, keyin kerakli qadamlar., chrome' / 'edge' / 'firefox' yoki None (istalgan). macOS'dagi 'safari' —…, Z-tartib bo'yicha birinchi mos brauzer oynasi (so'ralgani bo'lmasa — istalgan…, speed_presses() (+31 more)
+Nodes (39): fixture, browser_key(), looks_like_result(), pick_window(), Tezlik: avval minimal (0.25) gacha tushirib, keyin kerakli qadamlar., chrome' / 'edge' / 'firefox' yoki None (istalgan). macOS'dagi 'safari' —…, Z-tartib bo'yicha birinchi mos brauzer oynasi (so'ralgani bo'lmasa — istalgan…, speed_presses() (+31 more)
 
 ### Community 41 - "test_core.py"
-Cohesion: 0.08
-Nodes (31): math, compute_rms(), int16 mono PCM baytlaridan (rms 0..1, db -60..0) qaytaradi., numpy, sounddevice, fake_sd(), make_settings(), fixture (+23 more)
+Cohesion: 0.07
+Nodes (34): math, compute_rms(), int16 mono PCM baytlaridan (rms 0..1, db -60..0) qaytaradi., numpy, sounddevice, fake_sd(), make_settings(), fixture (+26 more)
 
 ### Community 42 - "._evaluate_addressed"
 Cohesion: 0.13
@@ -355,19 +353,19 @@ Nodes (6): Oxirgi real audio chunk karnayga chiqqan payt (time.monotonic; 0 — 
 
 ### Community 43 - "FakeAudio"
 Cohesion: 0.12
-Nodes (8): FakeAudio, FakeRegistry, test_background_voice_does_not_cut_addressed_reply(), test_build_config_ptt_disables_vad_and_optional_fields(), test_conversation_command_and_idle_tick(), test_run_requires_api_key(), test_user_turn_without_registry_hooks(), test_wake_name_mode_suppresses_audio_and_tools()
+Nodes (8): FakeAudio, FakeRegistry, test_build_config_ptt_disables_vad_and_optional_fields(), test_conversation_command_and_idle_tick(), test_dismissal_keeps_silent_and_waits_for_name(), test_run_requires_api_key(), test_user_turn_without_registry_hooks(), test_wake_name_mode_suppresses_audio_and_tools()
 
 ### Community 44 - "test_desktop.py"
 Cohesion: 0.11
 Nodes (21): ArgumentParser, Namespace, `base_url/health` 2xx qaytarguncha kutadi. `keep_waiting()` False qaytarsa…, wait_for_server(), build_parser(), desktop_mode(), Desktop (oyna + orb + menyu bar) rejimi kerakmi? `--headless`, `--no-ui`…, MonkeyPatch (+13 more)
 
-### Community 45 - "macos_actions.py"
-Cohesion: 0.13
-Nodes (26): ctypes, datetime, importlib, json, logging, Brauzer boshqaruvi (Safari / Google Chrome) — AppleScript + sahifa ichidagi…, macOS tizim amallari (AppleScript + xavfsiz shell). Barcha subprocess…, _cmd() (+18 more)
+### Community 45 - "video_translate.py"
+Cohesion: 0.12
+Nodes (32): asyncio, collections, collections_abc, datetime, importlib, json, logging, Mikrofon oqimi va ovoz ijrosi (sounddevice / PortAudio). `AudioStreamer` —… (+24 more)
 
 ### Community 46 - "._window"
-Cohesion: 0.10
-Nodes (14): Any, BrowserWindow, document_tree(), list_browser_windows(), _cb(), Sahifa (DocumentControl) elementlari. Chromium veb-kontent daraxtini UIA mijozi…, Ko'rinadigan brauzer oynalari, Z-tartibda (eng ustidagisi birinchi)., `fn(auto, root)` ni UIA ishga tushirilgan thread'da bajaradi. (+6 more)
+Cohesion: 0.13
+Nodes (9): BrowserWindow, list_browser_windows(), _cb(), Ko'rinadigan brauzer oynalari, Z-tartibda (eng ustidagisi birinchi)., `fn(auto, root)` ni UIA ishga tushirilgan thread'da bajaradi., Sahifa (DocumentControl) ichidagi elementlar; hujjat topilmasa — butun oyna., Pleyer tugmasining nomi: "Pause (k)" — ijro etilmoqda, "Play (k)" — pauzada., work() (+1 more)
 
 ### Community 47 - "Any"
 Cohesion: 0.14
@@ -378,8 +376,8 @@ Cohesion: 0.13
 Nodes (14): compute_backoff(), GeminiConfigError, _key_hint(), UI (Sozlamalar) dan API kalit: tekshiradi, saqlaydi va sessiyani yangi kalit…, Konfiguratsiya xatosi (masalan, API kaliti yo'q)., Cheksiz ulanish sikli; `stop()` chaqirilguncha qayta ulanaveradi., Kalit Sozlamalardan (`set_api_key`) kiritilguncha yoki `stop()` gacha kutadi., `timeout` sekund (None — cheksiz) kutadi; `stop()` yoki yangi API kalit… (+6 more)
 
 ### Community 49 - "snapshot"
-Cohesion: 0.31
-Nodes (10): _cmd_result(), api_state(), snapshot(), ws_endpoint(), handle_command(), receiver(), send(), sender() (+2 more)
+Cohesion: 0.46
+Nodes (8): _cmd_result(), api_state(), snapshot(), ws_endpoint(), handle_command(), receiver(), send(), sender()
 
 ### Community 50 - "BargeInGate"
 Cohesion: 0.25
@@ -390,12 +388,12 @@ Cohesion: 0.38
 Nodes (4): Uzluksiz nutqni tarjima bo'laklariga ajratadi: `push(rms)` True → bo'lakni shu…, Segmenter, test_segmenter_cuts_at_max(), test_segmenter_cuts_on_quiet_after_min()
 
 ### Community 52 - "server.py"
-Cohesion: 0.13
-Nodes (12): contextlib, errno, FastAPI, fastapi_responses, fastapi_staticfiles, _QuietServer, UI ko'prigi: FastAPI + WebSocket server. EventBus hodisalarini brauzerdagi UI…, Signal handlerlarini o'rnatmaydigan uvicorn Server (signalni main.py… (+4 more)
+Cohesion: 0.10
+Nodes (13): contextlib, errno, FastAPI, fastapi_responses, fastapi_staticfiles, _QuietServer, UI ko'prigi: FastAPI + WebSocket server. EventBus hodisalarini brauzerdagi UI…, Signal handlerlarini o'rnatmaydigan uvicorn Server (signalni main.py… (+5 more)
 
 ### Community 53 - "test_video_translate.py"
-Cohesion: 0.08
-Nodes (25): attach(), build_ffmpeg_cmd(), fit_tempo(), is_quota_error(), parse_player_state(), main.py: bus/settings/mikrofonni ulaydi; echo guard tarjima ijrosini ham…, AppleScript: JS ni video tabida bajaradi — Chrome'da `tab_id` bo'yicha (bir xil…, Kalit kvotasi (bir vaqtdagi sessiyalar soni yoki kunlik limit) tugadi. (+17 more)
+Cohesion: 0.06
+Nodes (30): nexus, build_ffmpeg_cmd(), build_ytdlp_cmd(), feed_action(), find_tab_script(), player_setup_js(), AppleScript: JS ni video tabida bajaradi — Chrome'da `tab_id` bo'yicha (bir xil…, AppleScript (Chrome): `video_id` ochiq tabni topib oldinga chiqaradi va id sini… (+22 more)
 
 ### Community 54 - "DictationState"
 Cohesion: 0.17
@@ -405,25 +403,25 @@ Nodes (6): DictationState, (teriladigan matn, to'xtash kerakmi). "…hammasi shu
 Cohesion: 0.33
 Nodes (3): Hozir ovoz chiqyaptimi (navbatda audio bor yoki oxirgi chunk yaqinda chiqqan)., Davriy tekshiruv (MetricsTicker): jimlik tufayli suhbat rejimini tugatish;…, Band holat (processing / tool_executing / speaking) tool ham, ijro ham, server…
 
-### Community 56 - "web_search"
-Cohesion: 0.50
-Nodes (4): build_search_url(), web_search(), web_search_h(), test_build_search_url()
+### Community 56 - "Settings"
+Cohesion: 0.18
+Nodes (7): google-genai Client — hamma joyda bir xil sozlama bilan., Settings, test_config_defaults_gemini38(), test_wake_defaults_to_name_only(), test_confirm_request_push_and_confirm_cmd(), test_multiple_clients_and_unsubscribe(), test_ws_get_state_without_handler()
 
-### Community 57 - "VideoTranslator"
-Cohesion: 0.11
-Nodes (16): Bo'laklarni `seq` tartibida, video o'z oralig'iga (`src_start`) yetganda ijroga…, Javob bermagan bo'lakni navbat boshiga qaytaradi — boshqa (bo'sh) sessiya oladi., Tarjima ulgurmayapti (masalan, kvota kam — sessiyalar yetmaydi): gapni tashlab…, turn_complete kelmay qolgan sessiyani bo'shatadi (model jim qoldi)., Tarjima bo'lagi: kiruvchi audio (tayinlanguncha `buf`da) va modelning javobi…, activity_end dan keyin `no_response_s` ichida audio kelmadi — ijroda o'tkazib…, Tayinlanmagan bo'laklarni (FIFO) bo'sh sessiyalarga beradi., Sessiya bo'shadi — navbatdagi bo'lakni olishi mumkin. (+8 more)
+### Community 57 - "Segment"
+Cohesion: 0.14
+Nodes (12): fit_tempo(), Bo'laklarni `seq` tartibida, video o'z oralig'iga (`src_start`) yetganda ijroga…, Javob bermagan bo'lakni navbat boshiga qaytaradi — boshqa (bo'sh) sessiya oladi., Tarjima ulgurmayapti (masalan, kvota kam — sessiyalar yetmaydi): gapni tashlab…, turn_complete kelmay qolgan sessiyani bo'shatadi (model jim qoldi)., Tarjima (`out_s`) videodagi qolgan oralig'iga (`window_s`) sig'ishi uchun…, Tarjima bo'lagi: kiruvchi audio (tayinlanguncha `buf`da) va modelning javobi…, activity_end dan keyin `no_response_s` ichida audio kelmadi — ijroda o'tkazib… (+4 more)
 
 ### Community 58 - "ocr_image"
-Cohesion: 0.16
-Nodes (18): Box, _image_size(), lines_as_elements(), lines_to_text(), ocr_image(), Satrlarni yuqoridan pastga, bir qatordagilarni chapdan o'ngga tartiblaydi. Ikki…, Tartiblangan satrlardan matn: bir qatordagilar ikki bo'shliq bilan, qatorlar…, OCR satrlarini list_ui_elements formatiga o'giradi: {n, role:'text', label, at,… (+10 more)
+Cohesion: 0.13
+Nodes (21): Box, lines_as_elements(), lines_to_text(), ocr_image(), Satrlarni yuqoridan pastga, bir qatordagilarni chapdan o'ngga tartiblaydi. Ikki…, Tartiblangan satrlardan matn: bir qatordagilar ikki bo'shliq bilan, qatorlar…, OCR satrlarini list_ui_elements formatiga o'giradi: {n, role:'text', label, at,…, Rasm faylini OCR qiladi → tartiblangan satrlar [{text, x, y, w, h}]. `bounds`… (+13 more)
 
 ### Community 59 - "file_actions.py"
-Cohesion: 0.14
-Nodes (14): append_spreadsheet_row(), _fallback_path_is_sensitive(), find_files(), list_directory(), Fayl, eslatma va Excel/CSV toollari — kengaytma moduli. Eksport (registry…, Model aytgan yo'lni absolyut `Path`ga aylantiradi. Bo'sh bo'lsa `default` (yoki…, Spotlight (mdfind) yo'q joyda: nomida `query` bor fayllar (yashirin…, read_file() (+6 more)
+Cohesion: 0.13
+Nodes (11): _fallback_path_is_sensitive(), list_directory(), _list_directory_sync(), Fayl, eslatma va Excel/CSV toollari — kengaytma moduli. Eksport (registry…, read_file(), _read_file_sync(), AppleScript'ni `osascript` orqali bajaradi (stdin orqali, argument uzunligi…, run_applescript() (+3 more)
 
-### Community 60 - "run"
-Cohesion: 0.11
-Nodes (19): Event, check_environment(), _first(), MetricsTicker, platform_controller(), print_banner(), Any, EventBus (+11 more)
+### Community 60 - "main.py"
+Cohesion: 0.09
+Nodes (27): Event, check_environment(), cli(), _first(), MetricsTicker, platform_controller(), print_banner(), Any (+19 more)
 
 ### Community 61 - "._handle_server_content"
 Cohesion: 0.20
@@ -433,33 +431,33 @@ Nodes (6): _asks_question(), _grounding_sources(), ToolRegistry.kill_all() ilgag
 Cohesion: 0.39
 Nodes (7): _b(), _decl(), _i(), _n(), Any, Gemini Live API uchun FunctionDeclaration lug'atlari va tizim ko'rsatmasi.…, _s()
 
-### Community 64 - "NexusOrbPanel"
-Cohesion: 0.33
-Nodes (3): NexusOrbPanel, Ramkasiz, shaffof, doim tepada, klaviatura fokusini OLMAYDIGAN panel.…, NSPanel
+### Community 64 - "_ConfirmTracker"
+Cohesion: 0.24
+Nodes (5): _ConfirmTracker, Any, EventBus, CONFIRM_REQUEST / CONFIRM_RESOLVED hodisalarini kuzatib, ochiq tasdiqni eslab…, _snapshot()
 
 ### Community 65 - "normalise"
 Cohesion: 0.33
 Nodes (5): is_dismissal(), normalise(), Kichik harf, urg'u/apostrofsiz, tinish belgisiz; kirill → lotin., Yo'q, hozircha hech narsa", "kerak emas", "rahmat", "нет, ничего", "no,…, test_normalise_folds_case_apostrophes_and_cyrillic()
 
 ### Community 66 - "fake_screen"
-Cohesion: 0.29
-Nodes (6): ax_ready(), fake_screen(), Any, fixture, MonkeyPatch, Skrinshot/JPEG bosqichini almashtiradi: real screencapture chaqirilmaydi.
+Cohesion: 0.40
+Nodes (5): ax_ready(), fake_screen(), fixture, MonkeyPatch, Skrinshot/JPEG bosqichini almashtiradi: real screencapture chaqirilmaydi.
 
 ### Community 67 - "Any"
-Cohesion: 0.15
-Nodes (12): is_silent(), Any, Bo'lak deyarli jim (o'rtacha RMS `SILENT_RMS` dan past)., Bitta Live sessiya: navbatdagi bo'lakni oladi, javobini bo'lakka yozadi., Parallel sessiyalar + dispetcher + tartibli ijro., Sessiya uzildi: joriy bo'lak yakunlangan deb belgilanadi, o'zi bo'sh ro'yxatdan…, Model javobini sessiyaning joriy bo'lagiga yozadi. True — navbat tugadi…, stop_video_translation() (+4 more)
+Cohesion: 0.11
+Nodes (16): attach(), parse_player_state(), Any, main.py: bus/settings/mikrofonni ulaydi; echo guard tarjima ijrosini ham…, Bitta Live sessiya: navbatdagi bo'lakni oladi, javobini bo'lakka yozadi., Sessiya bo'shadi — navbatdagi bo'lakni olishi mumkin., Sessiya uzildi: joriy bo'lak yakunlangan deb belgilanadi, o'zi bo'sh ro'yxatdan…, Model javobini sessiyaning joriy bo'lagiga yozadi. True — navbat tugadi… (+8 more)
 
-### Community 68 - "build_ytdlp_cmd"
-Cohesion: 0.29
-Nodes (5): build_ytdlp_cmd(), Faqat audio yuklanadi; stdout: 1-qator sarlavha, oxirgi qator fayl yo'li., yt-dlp: audio faylni vaqtinchalik papkaga yuklaydi. (ok, sarlavha | xato).…, watch_url(), test_build_ytdlp_cmd()
+### Community 68 - "._translate"
+Cohesion: 0.25
+Nodes (5): is_silent(), Bo'lak deyarli jim (o'rtacha RMS `SILENT_RMS` dan past)., Parallel sessiyalar + dispetcher + tartibli ijro., Tayinlanmagan bo'laklarni (FIFO) bo'sh sessiyalarga beradi., test_silent_segment_is_not_sent()
 
 ### Community 69 - "is_config_rejection"
 Cohesion: 0.29
 Nodes (7): BaseException, is_api_key_error(), is_config_rejection(), Server kalitni rad etdimi (noto'g'ri / bekor qilingan API kalit)?, Server konfiguratsiyani rad etgan bo'lsa navbatdagi modelga bog'liq maydonni…, Server konfiguratsiyani rad etdimi (WebSocket 1007 / invalid argument), kalit…, test_is_config_rejection()
 
 ### Community 70 - "test_extensions.py"
-Cohesion: 0.07
-Nodes (21): csv, nexus, POSIX_ONLY, fixture, parametrize, Kengaytma modullari (ax_actions, file_actions) testlari — real…, tmp_path ni ruxsat etilgan ildiz va default papka qiladi., pyobjc yo'q holat: handler xato matni qaytaradi, istisno emas. (+13 more)
+Cohesion: 0.09
+Nodes (18): csv, path_allowed(), Yo'l ruxsat etilgan ildizlar ostida va sezgir emasligini tekshiradi., POSIX_ONLY, parametrize, Kengaytma modullari (ax_actions, file_actions) testlari — real…, pyobjc yo'q holat: handler xato matni qaytaradi, istisno emas., `confirmed` sxemada bo'lmasligi shart — aks holda model gate'ni chetlab o'tadi. (+10 more)
 
 ### Community 71 - "test_registry_no_confirmation_runs_immediately"
 Cohesion: 0.29
@@ -470,44 +468,44 @@ Cohesion: 0.20
 Nodes (7): LoopGuard, Any, Bir navbatda haddan ko'p yoki bir xil chaqiruvlarni to'xtatadi., None — davom et; matn — rad etish sababi (modelga tushuntirish)., test_loop_guard_identical_calls(), test_loop_guard_max_calls_per_turn(), test_loop_guard_non_consecutive_identical_calls()
 
 ### Community 73 - "._build_window"
-Cohesion: 0.13
-Nodes (18): default_orb_origin(), default_window_frame(), _hex_color(), _make_app_icon(), _make_webview(), placeholder_html(), Oyna/orb hech bo'lmaganda `min_visible`×`min_visible` qismi bilan biror ekranda…, Ekranning pastki-o'ng burchagi (Dock/menyu bar hisobga olingan `visibleFrame`… (+10 more)
+Cohesion: 0.14
+Nodes (16): default_orb_origin(), default_window_frame(), _hex_color(), _make_webview(), placeholder_html(), Oyna/orb hech bo'lmaganda `min_visible`×`min_visible` qismi bilan biror ekranda…, Ekranning pastki-o'ng burchagi (Dock/menyu bar hisobga olingan `visibleFrame`…, Ekran o'rtasida, `visibleFrame`ning `fraction` (90%) qismi (yoki `size`), min… (+8 more)
 
-### Community 74 - "run_shell"
-Cohesion: 0.25
-Nodes (7): open_with_app(), _kill_process_group(), Jarayonni va u tug'dirgan barcha bolalarni (process group) o'ldiradi., Dasturni shell'siz ishga tushiradi. `(ok, stdout yoki stderr)` qaytaradi., run_shell(), _suppress, Process
+### Community 74 - "resolve_path"
+Cohesion: 0.14
+Nodes (14): find_files(), open_with_app(), Model aytgan yo'lni absolyut `Path`ga aylantiradi. Bo'sh bo'lsa `default` (yoki…, Spotlight (mdfind) yo'q joyda: nomida `query` bor fayllar (yashirin…, resolve_path(), _walk_find(), _kill_process_group(), Jarayonni va u tug'dirgan barcha bolalarni (process group) o'ldiradi. (+6 more)
 
-### Community 76 - "gemini_live_client.py"
-Cohesion: 0.16
-Nodes (15): dataclasses, itertools, api_key_hint(), UI uchun niqoblangan ko'rinish: `AIza…x1y2` (kalitning o'zi hech qachon UI ga…, Diktovka rejimi: foydalanuvchi gapiradi — yordamchi teradi, to'xtash…, Gemini Multimodal Live API (WebSocket) sessiyasi. Ikki parallel task:…, ends_conversation(), _has_phrase() (+7 more)
+### Community 76 - "wake.py"
+Cohesion: 0.21
+Nodes (11): dataclasses, itertools, Diktovka rejimi: foydalanuvchi gapiradi — yordamchi teradi, to'xtash…, ends_conversation(), _has_phrase(), Ism bilan chaqirish (wake): gap yordamchiga qaratilganmi? Xonada boshqa odamlar…, kel gaplashamiz", "suhbatlashaylik", "давай поговорим", "let's talk" …, bo'ldi, rahmat", "suhbatni tugat", "xayr" … (+3 more)
 
 ### Community 78 - "web_answer.py"
 Cohesion: 0.33
 Nodes (12): build_request(), _create(), extract_sources(), extract_text(), _get(), _make_client(), Any, `web_answer` tool — Google Search grounding bilan faktik/yangilik savollariga… (+4 more)
 
 ### Community 81 - "desktop_win.py"
-Cohesion: 0.24
-Nodes (10): DaemonRunner, DesktopOptions, Settings, Windows desktop qatlami: daemon alohida thread'da, UI — pywebview (Edge…, Konsolsiz .exe da xato ko'rinmay qolmasin — Windows xabar oynasi., UI serveri tinglay boshlaguncha kutadi., run_desktop(), show_error() (+2 more)
+Cohesion: 0.14
+Nodes (15): DaemonRunner, DesktopOptions, Settings, Windows desktop qatlami: daemon alohida thread'da, UI — pywebview (Edge…, Konsolsiz .exe da xato ko'rinmay qolmasin — Windows xabar oynasi., UI serveri tinglay boshlaguncha kutadi., run_desktop(), show_error() (+7 more)
 
-### Community 84 - "._run"
-Cohesion: 0.10
-Nodes (12): feed_action(), find_tab_script(), `pos` dan `ahead` soniya oldinga tarjima tayyormi: ijroga qo'yilgan, yoki…, Buferlash: video pauzada turadi, oldinda `GATE_AHEAD_S` tarjima tayyor bo'lgach…, AppleScript (Chrome): `video_id` ochiq tabni topib oldinga chiqaradi va id sini…, Navbatdagi chunk bilan nima qilish: "resync" | "wait" | "send". Audio videodan…, JS ni video ochilgan tabda bajaradi (faol tab emas — foydalanuvchi boshqa tabga…, Pleyer holatini kuzatadi; tab boshqa sahifaga o'tsa yoki video tugasa — tugaydi. (+4 more)
+### Community 84 - "VideoTranslator"
+Cohesion: 0.13
+Nodes (10): `pos` dan `ahead` soniya oldinga tarjima tayyormi: ijroga qo'yilgan, yoki…, Video pauza, tarjima ovozi esa davom etadi — `seconds` dan keyin video qayta…, Buferlash: video pauzada turadi, oldinda `GATE_AHEAD_S` tarjima tayyor bo'lgach…, yt-dlp: audio faylni vaqtinchalik papkaga yuklaydi. (ok, sarlavha | xato).…, JS ni video ochilgan tabda bajaradi (faol tab emas — foydalanuvchi boshqa tabga…, Pleyer holatini kuzatadi; tab boshqa sahifaga o'tsa yoki video tugasa — tugaydi., Seek: navbatdagi kiruvchi audio va hali ijro etilmagan tarjimalar tashlanadi., ffmpeg PCM → navbat (video vaqti bilan), videodan `LOOKAHEAD_S` oldinda; seek →… (+2 more)
 
 ### Community 85 - "PlaybackClock"
-Cohesion: 0.10
-Nodes (14): find_binary(), is_junk_translation(), PlaybackClock, PATH + Homebrew papkalari (.app ichidan ishga tushganda PATH qisqa bo'ladi)., Model tarjima o'rniga yorliq/izoh aytdi (`(Uzbek translation: …)`, `<no…, Brauzer pleyeri holatidan joriy video vaqtini baholaydi (so'rovlar orasida…, s16le mono PCM ni ohangini saqlab `tempo` barobar tezlashtiradi (ffmpeg…, time_stretch() (+6 more)
+Cohesion: 0.14
+Nodes (8): find_binary(), PlaybackClock, PATH + Homebrew papkalari (.app ichidan ishga tushganda PATH qisqa bo'ladi)., Brauzer pleyeri holatidan joriy video vaqtini baholaydi (so'rovlar orasida…, s16le mono PCM ni ohangini saqlab `tempo` barobar tezlashtiradi (ffmpeg…, time_stretch(), test_clock_interpolates_and_halts(), test_time_stretch_shortens_audio()
 
 ### Community 86 - "benchmark_live.py"
-Cohesion: 0.33
-Nodes (8): all_declarations(), build_config(), main(), passed(), Model qaysi toolni tanlashini real Gemini Live sessiyasida o'lchash (toollar…, Asosiy sxemalar + kengaytma modullari (nomlar bo'yicha takrorsiz)., Bitta buyruq: (chaqirilgan toollar [{name,args}], aytilgan matn, navbatlar…, run_case()
+Cohesion: 0.15
+Nodes (15): argparse, all_declarations(), build_config(), main(), passed(), Model qaysi toolni tanlashini real Gemini Live sessiyasida o'lchash (toollar…, Asosiy sxemalar + kengaytma modullari (nomlar bo'yicha takrorsiz)., Bitta buyruq: (chaqirilgan toollar [{name,args}], aytilgan matn, navbatlar… (+7 more)
 
 ### Community 88 - "AudioPlayer"
-Cohesion: 0.10
-Nodes (15): AudioPlayer, parse_latency(), EventBus, high"/"low" yoki sekund (str/float) → sounddevice `latency` argumenti., 24 kHz int16 mono ijro. `enqueue` istalgan thread/task'dan chaqirilishi mumkin.…, Buferdagi qolgan audioni (prebuffer to'lmagan bo'lsa ham) ijroga qo'yib…, Navbatni tozalaydi (interruption). Tashlangan chunklar sonini qaytaradi., test_interrupted_cancels_tools_and_generation_complete_plays_out() (+7 more)
+Cohesion: 0.07
+Nodes (24): AbstractEventLoop, AudioPlayer, _default_input_index(), list_input_devices(), parse_latency(), Any, EventBus, high"/"low" yoki sekund (str/float) → sounddevice `latency` argumenti. (+16 more)
 
 ### Community 89 - "WindowsCommandGuard"
-Cohesion: 0.22
-Nodes (5): CommandGuard, `run_terminal_command` qo'riqchisi — Windows (cmd) buyruqlari uchun. Asosiy…, Buyruqni qo'riqchi orqali `cmd` da bajaradi (UTF-8 kod sahifasi, shell…, WindowsCommandGuard, Verdict
+Cohesion: 0.11
+Nodes (15): CommandGuard, _truncate(), `run_terminal_command` qo'riqchisi — Windows (cmd) buyruqlari uchun. Asosiy…, Buyruqni qo'riqchi orqali `cmd` da bajaradi (UTF-8 kod sahifasi, shell…, WindowsCommandGuard, HotkeyError, parse_hotkey(), cmd+shift+s' → ([VK_CONTROL, VK_SHIFT], ord('S')). Xato bo'lsa `HotkeyError`. (+7 more)
 
 ### Community 90 - "reference/AI analysis (old Voice Assistant)"
 Cohesion: 0.22
@@ -529,41 +527,37 @@ Nodes (9): match_app(), hits(), `needle` nomning boshida yoki ichidagi so'z bosh
 Cohesion: 0.27
 Nodes (10): Desktop layer (pure pyobjc NSWindow + WKWebView, orb NSPanel, menu bar), Orb overlay (floating non-activating NSPanel), UI -> daemon commands (mute, ptt, confirm, kill_all, text, wake_mode, dictation...), UI event contract ({type, ts, data} over /ws), Orb overlay page (orb.html), connect() WebSocket with exponential retry, draw() canvas orb renderer, effective() state resolver (+2 more)
 
-### Community 95 - "windows_smoke.py"
-Cohesion: 0.29
-Nodes (9): browser_smoke(), check(), main(), Windows smoke testi: registry, xavfsiz toollar va UI serveri haqiqiy Windows'da…, Muhitga bog'liq tekshiruv (brauzerning birinchi ishga tushishi va h.k.) —…, Diagnostika: brauzer oynasining UIA daraxtida nima bor (Chromium veb-kontenti…, soft(), uia_dump() (+1 more)
+### Community 95 - "is_junk_translation"
+Cohesion: 0.33
+Nodes (6): is_junk_translation(), Model tarjima o'rniga yorliq/izoh aytdi (`(Uzbek translation: …)`, `<no…, youtube_id(), parametrize, test_is_junk_translation(), test_youtube_id()
 
-### Community 96 - "vision_box_to_screen"
-Cohesion: 0.50
-Nodes (4): Vision normalizatsiyalangan bbox (0..1, y PASTDAN) → ekran (x, y, w, h),…, vision_box_to_screen(), test_vision_box_bottom_line_lands_at_window_bottom(), test_vision_box_to_screen_flips_y_and_offsets_by_window()
-
-### Community 98 - "player_setup_js"
-Cohesion: 0.29
-Nodes (5): player_setup_js(), Video pauza, tarjima ovozi esa davom etadi — `seconds` dan keyin video qayta…, Pleyer: asl ovozni o'chirish/pasaytirish (0..1, manfiy — tegilmaydi) va ijro…, test_player_setup_js(), test_player_setup_js_keeps_volume_when_negative()
+### Community 98 - "_conversation"
+Cohesion: 0.67
+Nodes (3): _conversation(), start_conversation(), stop_conversation()
 
 ### Community 101 - ".get_system_info"
 Cohesion: 0.24
 Nodes (5): _fmt_uptime(), Any, SSID ni aniqlaydi. macOS 14+ da Location Services ruxsatisiz SSID `<redacted>`…, _summarize_info(), Any
 
-### Community 102 - "_recognize"
-Cohesion: 0.33
-Nodes (6): pick_languages(), Qo'llab-quvvatlanadigan tillardan kerakli tartibda tanlaydi ("uz" → "uz-UZ"…, Vision OCR: [(text, nx, ny, nw, nh, confidence)] — normalizatsiyalangan, y…, _recognize(), supported_languages(), test_pick_languages_prefers_uz_then_ru_en_and_skips_missing()
+### Community 102 - "is_quota_error"
+Cohesion: 0.67
+Nodes (3): is_quota_error(), Kalit kvotasi (bir vaqtdagi sessiyalar soni yoki kunlik limit) tugadi., test_is_quota_error()
+
+### Community 103 - "sandbox"
+Cohesion: 0.67
+Nodes (3): fixture, tmp_path ni ruxsat etilgan ildiz va default papka qiladi., sandbox()
 
 ### Community 104 - "Security model (confirmation from user transcript/UI only)"
 Cohesion: 0.25
 Nodes (9): CommandGuard allow/deny/confirm tiers, Loop guard (max 15 calls/turn, 3 identical), Secret redaction (redact_secrets), Security model (confirmation from user transcript/UI only), Sensitive path denial (path_is_sensitive), Taint guard (external content -> exfil/execute tools require confirmation), ToolRegistry.execute flow: validate -> loop guard -> taint -> confirm -> handler, Old code bugs (do not repeat) (+1 more)
 
-### Community 105 - "sensitivity_to_threshold"
-Cohesion: 0.67
-Nodes (3): Sezgirlik (0..1) → RMS bo'sag'asi. 1.0 = juda sezgir (past bo'sag'a)., sensitivity_to_threshold(), test_sensitivity_threshold_monotonic()
-
-### Community 107 - "error_text"
-Cohesion: 0.50
-Nodes (4): error_text(), BaseException, Gemini xatosini foydalanuvchiga o'zbekcha qisqa jumla qilib beradi., test_error_text_is_uzbek()
-
 ### Community 114 - "Mic -> AudioStreamer -> GeminiLiveClient -> ToolRegistry -> EventBus -> UI pipeline"
 Cohesion: 0.25
 Nodes (8): Nexus Ovoz OS design mockup (dc.html), Design mockup Component (simulated PTT command flow), Local models concept (Whisper.cpp small.uz + Qwen 7B Q4), Mic -> AudioStreamer -> GeminiLiveClient -> ToolRegistry -> EventBus -> UI pipeline, Gemini Live API (native audio, WebSocket), Nexus browser/desktop panel (index.html), Confirmation card (TASDIQ KUTILMOQDA, Yes/No, TTL), Live transcript box
+
+### Community 116 - "test_is_terminal_frontmost"
+Cohesion: 0.50
+Nodes (3): is_terminal_app(), Old oynadagi ilova terminal (Terminal/iTerm/Warp/...) bo'lsa True., test_is_terminal_frontmost()
 
 ### Community 117 - "pytest"
 Cohesion: 0.29
@@ -587,20 +581,20 @@ Nodes (3): _dictation(), start_dictation(), stop_dictation()
 
 ## Knowledge Gaps
 - **18 isolated node(s):** `INPUT`, `_INPUTUNION`, `MOUSEINPUT`, `Live transcript box`, `Session resumption + context compression` (+13 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 691 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **31 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 693 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **30 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **What is the exact relationship between `Gemini Live API (native audio, WebSocket)` and `Local models concept (Whisper.cpp small.uz + Qwen 7B Q4)`?**
   _Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
-- **Why does `ToolRegistry` connect `ToolRegistry` to `Any`, `test_registry_no_confirmation_runs_immediately`, `Security model (confirmation from user transcript/UI only)`, `test_core.py`, `._build_handlers`, `test_tools.py`, `macos_actions.py`, `test_safety.py`, `Result`, `Mic -> AudioStreamer -> GeminiLiveClient -> ToolRegistry -> EventBus -> UI pipeline`, `test_video_translate.py`, `_registry`, `test_registry_loads_extension_modules`, `run`, `.kill_all`, `windows_smoke.py`?**
-  _High betweenness centrality (0.085) - this node is a cross-community bridge._
-- **Why does `run()` connect `run` to `AudioStreamer`, `GeminiLiveClient`, `config.py`, `cli`, `ToolRegistry`, `server.py`, `desktop.py`, `test_video_translate.py`?**
-  _High betweenness centrality (0.049) - this node is a cross-community bridge._
-- **Why does `GeminiLiveClient` connect `GeminiLiveClient` to `AudioStreamer`, `is_config_rejection`, `._evaluate_addressed`, `._confirmation_pending`, `gemini_live_client.py`, `Any`, `.run`, `Mic -> AudioStreamer -> GeminiLiveClient -> ToolRegistry -> EventBus -> UI pipeline`, `.tick`, `WakeState`, `reference/AI analysis (old Voice Assistant)`, `run`, `._handle_server_content`?**
-  _High betweenness centrality (0.047) - this node is a cross-community bridge._
+- **Why does `ToolRegistry` connect `ToolRegistry` to `normalize_browser`, `Any`, `Result`, `test_registry_no_confirmation_runs_immediately`, `Security model (confirmation from user transcript/UI only)`, `test_core.py`, `._build_handlers`, `test_tools.py`, `video_translate.py`, `windows_screen.py`, `test_safety.py`, `WindowsController`, `Mic -> AudioStreamer -> GeminiLiveClient -> ToolRegistry -> EventBus -> UI pipeline`, `test_video_translate.py`, `_registry`, `test_registry_loads_extension_modules`, `main.py`?**
+  _High betweenness centrality (0.073) - this node is a cross-community bridge._
+- **Why does `NexusDesktopApp` connect `NexusDesktopApp` to `DaemonRunner`, `desktop.py`, `._build_window`, `test_desktop.py`, `Settings`?**
+  _High betweenness centrality (0.066) - this node is a cross-community bridge._
+- **Why does `AudioStreamer` connect `AudioStreamer` to `test_core.py`, `video_translate.py`, `Mic -> AudioStreamer -> GeminiLiveClient -> ToolRegistry -> EventBus -> UI pipeline`, `._process_chunk`, `AudioPlayer`, `reference/AI analysis (old Voice Assistant)`, `main.py`?**
+  _High betweenness centrality (0.065) - this node is a cross-community bridge._
 - **Are the 3 inferred relationships involving `GeminiLiveClient` (e.g. with `WakeState` and `run()`) actually correct?**
   _`GeminiLiveClient` has 3 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 4 inferred relationships involving `ToolRegistry` (e.g. with `run()` and `WindowsController`) actually correct?**

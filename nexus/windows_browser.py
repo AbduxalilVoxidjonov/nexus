@@ -159,6 +159,28 @@ def pick_page_document(docs: list[Any], sizes: list[int], title: str = "") -> in
     return best
 
 
+def wake_renderers(items: list[Any], auto: Any = None) -> int:
+    """Chromium veb-kontent accessibility'ni sahifa oynasiga (Chrome_RenderWidgetHostHWND) to'g'ridan-to'g'ri
+    UIA so'rovi (WM_GETOBJECT) kelganda yoqadi — tepa oyna orqali yurish buni har doim qo'zg'atmaydi."""
+    woken = 0
+    for c in items:
+        if "RenderWidgetHost" not in (getattr(c, "ClassName", "") or ""):
+            continue
+        if auto is None:
+            from nexus.windows_screen import _uia
+
+            auto = _uia()
+        try:
+            hwnd = c.NativeWindowHandle
+            if hwnd:
+                ctrl = auto.ControlFromHandle(hwnd)
+                ctrl.GetChildren()
+                woken += 1
+        except Exception as e:  # noqa: BLE001
+            log.debug("Render oynasi uyg'onmadi: %s", e)
+    return woken
+
+
 def document_tree(root: Any, title: str = "", tries: int = DOC_TRIES) -> list[Any]:
     """Sahifa (DocumentControl) elementlari. Chromium veb-kontent daraxtini UIA mijozi birinchi
     so'raganda quradi — birinchi o'tishda hujjat bo'sh bo'ladi, shuning uchun qisqa qayta urinish.
@@ -166,7 +188,10 @@ def document_tree(root: Any, title: str = "", tries: int = DOC_TRIES) -> list[An
     from nexus.windows_screen import _walk
 
     for attempt in range(tries):
-        docs = [c for c in _walk(root, 5000) if c.ControlTypeName == "DocumentControl"]
+        items = _walk(root, 5000)
+        if attempt == 0:
+            wake_renderers(items)
+        docs = [c for c in items if c.ControlTypeName == "DocumentControl"]
         trees = [_walk(d, 3000) for d in docs]
         idx = pick_page_document(docs, [len(t) for t in trees], title)
         if idx is not None:
@@ -397,9 +422,31 @@ class WindowsBrowser:
             return True, f"Bosildi: {matches[0].name} ({how})"
 
         try:
-            return await self._uia_run(win.hwnd, work)
+            ok, out = await self._uia_run(win.hwnd, work)
         except Exception as e:  # noqa: BLE001
-            return False, f"Bosib bo'lmadi: {e}"
+            ok, out = False, f"Bosib bo'lmadi: {e}"
+        if ok or not (text or "").strip():
+            return ok, out
+        return await self._click_via_find(browser, text)
+
+    async def _click_via_find(self, browser: str, text: str) -> Result:
+        """Zaxira: sahifa daraxti yo'q bo'lsa — Ctrl+F bilan topib, Esc (Chromium topilgan havola/tugmaga
+        fokus beradi) va Enter. Natijani albatta tekshirish kerak."""
+        from nexus import windows_input
+
+        win, err = await self._keys(browser, ("ctrl+f", 1))
+        if win is None:
+            return False, err
+        await asyncio.sleep(0.2)
+        await asyncio.to_thread(windows_input.type_unicode, text)
+        await asyncio.sleep(0.4)
+        await asyncio.to_thread(windows_input.press_combo, "esc")
+        await asyncio.sleep(0.2)
+        await asyncio.to_thread(windows_input.press_enter)
+        return True, (
+            f"'{text}' sahifada qidirib bosildi (klaviatura orqali — natijani browser_read_page yoki "
+            "look_at_screen bilan tekshiring)"
+        )
 
     async def click_element(self, browser: str, selector: str) -> Result:
         return False, "Windows'da CSS selektor bilan bosish yo'q — browser_click_button(matn) dan foydalaning"
@@ -415,9 +462,17 @@ class WindowsBrowser:
         except Exception as e:  # noqa: BLE001
             return False, f"Sahifani o'qib bo'lmadi: {e}"
         text = collect_text(controls, max(200, int(max_chars or 1500)))
-        if not text.strip():
-            return False, "Sahifa matni o'qilmadi — read_screen_ocr yoki look_at_screen bilan ko'ring"
-        return True, f"{win.page_title}\n\n{text}"
+        if text.strip():
+            return True, f"{win.page_title}\n\n{text}"
+        # Sahifa daraxti yo'q — brauzer oynasining skrinshotini o'qiymiz
+        from nexus.windows_screen import OCR_PROMPT, _activate, _ask_gemini
+
+        await asyncio.to_thread(_activate, win.hwnd)
+        await asyncio.sleep(0.3)
+        res = await _ask_gemini(OCR_PROMPT)
+        if res.get("ok"):
+            return True, f"{win.page_title}\n\n{res.get('output', '')}"
+        return False, f"Sahifa matni o'qilmadi: {res.get('output')}"
 
     async def get_page_links(self, browser: str, limit: int = 30) -> Result:
         ok, links = await self._result_links(browser)
