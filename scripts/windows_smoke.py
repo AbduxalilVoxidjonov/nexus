@@ -34,6 +34,37 @@ PAGE = """<!doctype html><html><head><meta charset="utf-8"><title>Nexus Smoke Sa
 <input aria-label="Qidiruv" placeholder="Qidiruv"></body></html>"""
 
 
+async def uia_dump() -> None:
+    """Diagnostika: brauzer oynasining UIA daraxtida nima bor (Chromium veb-kontenti ko'rinadimi)."""
+    from collections import Counter
+
+    from nexus.windows_browser import list_browser_windows
+    from nexus.windows_screen import _uia, _walk
+
+    def work() -> None:
+        auto = _uia()
+        with auto.UIAutomationInitializerInThread():
+            wins = list_browser_windows()
+            print("  brauzer oynalari:", [(w.process, w.title) for w in wins])
+            if not wins:
+                return
+            root = auto.ControlFromHandle(wins[0].hwnd)
+            items = _walk(root, 5000)
+            print("  elementlar:", len(items), dict(Counter(c.ControlTypeName for c in items).most_common(12)))
+            for c in items:
+                if c.ControlTypeName == "DocumentControl":
+                    kids = _walk(c, 200)
+                    print(f"  Document: name={c.Name!r} class={c.ClassName!r} ichida={len(kids)}",
+                          [(k.ControlTypeName, k.Name[:30]) for k in kids[:8]])
+            renders = [c for c in items if "RenderWidgetHost" in (c.ClassName or "")]
+            print("  RenderWidgetHost:", [(c.ControlTypeName, c.ClassName) for c in renders[:3]])
+
+    try:
+        await asyncio.to_thread(work)
+    except Exception as e:  # noqa: BLE001
+        print("  UIA dump xatosi:", e)
+
+
 async def browser_smoke(reg, probe_dir: Path) -> None:
     page = probe_dir / "nexus_smoke.html"
     page.write_text(PAGE, encoding="utf-8")
@@ -43,6 +74,7 @@ async def browser_smoke(reg, probe_dir: Path) -> None:
     res = await reg.execute("browser_open_url", {"url": page.as_uri()})
     soft("browser_open_url", res.get("ok"), res.get("output"))
     await asyncio.sleep(6)  # brauzer ochilishi
+    await uia_dump()
     for tool, args in (
         ("browser_current_page", {}),
         ("browser_list_tabs", {}),

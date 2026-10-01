@@ -288,9 +288,9 @@
     "semantic_hash": ""
   },
   "tests/test_windows.py": {
-    "mtime": 1790846243.972305,
-    "seen": 1790846264.7003572,
-    "ast_hash": "92145112aca5f484f2da92764d1137c4",
+    "mtime": 1790846848.052769,
+    "seen": 1790846849.007236,
+    "ast_hash": "03abd9ae472772a694bc8da57fa238bc",
     "semantic_hash": ""
   },
   ".github/workflows/windows-exe.yml": {
@@ -318,9 +318,9 @@
     "semantic_hash": ""
   },
   "nexus/windows_browser.py": {
-    "mtime": 1790846081.5187232,
-    "seen": 1790846114.885289,
-    "ast_hash": "a9f3ee52da89e01a69266886c936cf69",
+    "mtime": 1790846813.858556,
+    "seen": 1790846849.007227,
+    "ast_hash": "c08ba29ff774621e847457d681648b63",
     "semantic_hash": ""
   },
   "nexus/windows_video.py": {
