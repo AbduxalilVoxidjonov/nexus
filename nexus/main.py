@@ -142,7 +142,8 @@ LOG_FILE = Path("~/.nexus/logs/nexus.log").expanduser()
 def setup_logging(level: str, log_file: Path | None = LOG_FILE) -> None:
     """Konsol + aylanma log fayl (`~/.nexus/logs/nexus.log`, 2 MB × 3) — .app'da ham muammoni ko'rish uchun."""
     fmt = "%(asctime)s %(levelname)-5s %(name)s: %(message)s"
-    handlers: list[logging.Handler] = [logging.StreamHandler()]
+    # Konsolsiz .exe/.app da sys.stderr = None — konsol handler'i faqat konsol bo'lsa
+    handlers: list[logging.Handler] = [logging.StreamHandler()] if sys.stderr is not None else []
     if log_file is not None:
         try:
             from logging.handlers import RotatingFileHandler

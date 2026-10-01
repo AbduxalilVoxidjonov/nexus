@@ -294,6 +294,10 @@ class UIServer:
             host=self.settings.ui_host,
             port=self.settings.ui_port,
             log_level="warning",
+            # uvicorn o'z formatter'ini sozlamasin: konsolsiz .exe da sys.stdout = None va uning
+            # DefaultFormatter'i isatty() da yiqiladi ("Unable to configure formatter 'default'").
+            # Loglar root logger'ga (nexus.log) o'tadi.
+            log_config=None,
             loop="asyncio",
             lifespan="off",
             access_log=False,

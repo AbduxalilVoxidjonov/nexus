@@ -19,6 +19,17 @@ log = logging.getLogger("nexus.desktop_win")
 
 WINDOW_TITLE = "Nexus Ovoz OS"
 SERVER_WAIT_S = 20.0
+LOG_HINT = r"%USERPROFILE%\.nexus\logs\nexus.log"
+
+
+def show_error(message: str) -> None:
+    """Konsolsiz .exe da xato ko'rinmay qolmasin — Windows xabar oynasi."""
+    try:
+        import ctypes
+
+        ctypes.windll.user32.MessageBoxW(None, message, WINDOW_TITLE, 0x10)  # MB_ICONERROR
+    except (AttributeError, OSError):
+        log.error("%s", message)
 
 
 def wait_for_port(host: str, port: int, timeout: float = SERVER_WAIT_S) -> bool:
@@ -40,6 +51,11 @@ def run_desktop(settings: Settings, options: DesktopOptions) -> int:
     if not wait_for_port(settings.ui_host, settings.ui_port):
         log.error("UI serveri %s da ishga tushmadi", url)
         runner.stop()
+        show_error(
+            "Nexus ishga tushmadi: UI serveri ochilmadi.\n\n"
+            f"Port {settings.ui_port} band bo'lishi mumkin (Nexus allaqachon ochiqmi?).\n"
+            f"Batafsil: {LOG_HINT}"
+        )
         return runner.exit_code or 1
 
     if not options.window:

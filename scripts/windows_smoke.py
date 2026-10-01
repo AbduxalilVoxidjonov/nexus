@@ -37,6 +37,9 @@ PAGE = """<!doctype html><html><head><meta charset="utf-8"><title>Nexus Smoke Sa
 async def browser_smoke(reg, probe_dir: Path) -> None:
     page = probe_dir / "nexus_smoke.html"
     page.write_text(PAGE, encoding="utf-8")
+    # Har bir buyruq — foydalanuvchining yangi gapi: oldingi navbatda o'qilgan tashqi matn (taint)
+    # keyingi amallarga tasdiq talab qilmasin
+    reg.new_turn()
     res = await reg.execute("browser_open_url", {"url": page.as_uri()})
     soft("browser_open_url", res.get("ok"), res.get("output"))
     await asyncio.sleep(6)  # brauzer ochilishi
@@ -46,11 +49,14 @@ async def browser_smoke(reg, probe_dir: Path) -> None:
         ("browser_read_page", {}),
         ("browser_click_button", {"button_text": "Bosing"}),
     ):
+        reg.new_turn()
         res = await reg.execute(tool, args)
         soft(tool, res.get("ok"), res.get("output") or res.get("error"))
         await asyncio.sleep(1)
+    reg.new_turn()
     res = await reg.execute("browser_current_page", {})
     soft("tugma bosilgandan keyin sarlavha", "Bosildi OK" in (res.get("output") or ""), res.get("output"))
+    reg.new_turn()
     res = await reg.execute("browser_close_tab", {})
     soft("browser_close_tab", res.get("ok"), res.get("output"))
 

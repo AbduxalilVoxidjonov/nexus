@@ -8,6 +8,8 @@ YouTube, fayl va Excel, ekrandagi tugmalarni bosish, matn terish, diktovka.
 Kirish tili — o'zbek, rus yoki ingliz (avtomatik); javob tili — foydalanuvchi gapirgan til
 (asosiysi o'zbek lotin). Qisqa, iliq, tasdiq talab qiladigan amallarda ehtiyotkor.
 
+**Windows** uchun ham bor — o'rnatilmaydigan bitta `Nexus.exe` (pastda: [Windows](#windows)).
+
 ---
 
 ## Arxitektura
@@ -164,6 +166,32 @@ to'xtatish, `⌥Y`/`⌥N` tasdiq. Tizim avtomatik tinglaydi (VAD doim yoqiq, PTT
 uv pip install -e ".[dev]"            # pyinstaller
 zsh scripts/build_app.sh              # → dist/Nexus Ovoz OS.app (Info.plist: mikrofon/Automation ta'riflari)
 ```
+
+### Windows
+
+`Nexus.exe` — o'rnatilmaydigan bitta fayl (Windows 10/11, 64-bit). Har `main` ga push'da GitHub Actions
+Windows mashinasida testlar, smoke test va yig'ishni bajaradi; tayyor fayl — Actions → "Windows .exe" →
+**Nexus-windows** artefakti. Qo'lda yig'ish (Windows'da):
+
+```powershell
+uv sync --extra dev
+uv run pyinstaller nexus-windows.spec --noconfirm   # → dist\Nexus.exe
+uv run python scripts/windows_smoke.py              # haqiqiy Windows'da toollar tekshiruvi
+```
+
+Ishga tushirgach Sozlamalar (⚙) → Gemini API kaliti; `.env` va loglar `%USERPROFILE%\.nexus\` da.
+Oyna — Edge WebView2 (Windows 10/11 da bor). macOS'dan farqlar:
+
+| Imkoniyat | Windows'da |
+|---|---|
+| Ilovalar | Start menyusi yorliqlari bo'yicha ochish, jarayon bo'yicha yopish |
+| Ovoz | ovoz klavishlari (2% qadam) — mutlaq daraja taxminiy; mute — almashtirish |
+| Matn terish / klavishlar | `SendInput` Unicode (o'zbek, kirill buzilmaydi); `cmd+c` → `ctrl+c` |
+| Terminal | `cmd`, alohida qo'riqchi: `del`, `rd`, `format`, `powershell`, `reg`, `%VAR%`, `^` rad etiladi |
+| Ekran | UI Automation (matn, tugmalar, menyu); `look_at_screen`/`read_screen_ocr` — Gemini vision |
+| Brauzer (Chrome/Edge/Firefox) | tablar va sahifa matni — UIA; yopish/yangilash/aylantirish — klavishlar; YouTube — pleyer klavishlari; CSS selektor yo'q |
+| Video tarjima | video Nexus'ning o'z oynasida ochiladi; `winget install yt-dlp.yt-dlp Gyan.FFmpeg` |
+| Yo'q | yorug'lik, bezovta qilmaslik, "hozir nima ijro etilmoqda" |
 
 ---
 

@@ -65,12 +65,29 @@
   ];
   const kindOf = (name) => { for (const [k, re] of KIND_RULES) if (re.test(name || "")) return k; return "system"; };
 
-  const SUGGESTIONS = ["Safari'da YouTube'ni och", "Ovozni 40 ga qo'y", "Skrinshot ol", "Tizim holati"];
+  const IS_WIN = /Windows/i.test(navigator.userAgent);
+  const ALT = IS_WIN ? "Alt" : "⌥";
+  const ESC = IS_WIN ? "Esc" : "⎋";
+  // Windows: index.html dagi macOS klavish belgilari (⌥M, ⌥⎋) → Alt+M, Alt+Esc
+  const winKeyLabels = () => {
+    if (!IS_WIN) return;
+    const fix = (t) => t.replace(/⌥\s?/g, "Alt+").replace(/⎋/g, "Esc");
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      if (/[⌥⎋]/.test(n.nodeValue)) n.nodeValue = fix(n.nodeValue);
+    }
+    document.querySelectorAll("[title]").forEach((el) => {
+      if (/[⌥⎋]/.test(el.title)) el.title = fix(el.title);
+    });
+  };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", winKeyLabels);
+  else winKeyLabels();
+  const SUGGESTIONS = [IS_WIN ? "Chrome'da YouTube'ni och" : "Safari'da YouTube'ni och", "Ovozni 40 ga qo'y", "Skrinshot ol", "Tizim holati"];
   const TRIGGERS = [
     { label: () => "Hey " + (S.settings.name || "Nexus"), key: "wake", action: null },
-    { label: "Ovozni o'chir", key: "⌥ M", action: () => toggleMute() },
+    { label: "Ovozni o'chir", key: ALT + " M", action: () => toggleMute() },
     { label: "Skrinshot ol", key: "matn", action: () => sendText("Skrinshot ol") },
-    { label: "Hammasini to'xtat", key: "⌥ ⎋", action: () => killAll() },
+    { label: "Hammasini to'xtat", key: ALT + " " + ESC, action: () => killAll() },
   ];
 
   // ── Ilova holati ──────────────────────────────────────────────────
@@ -607,7 +624,7 @@
     if (ico) ico.setAttribute("d", m ? "M11 5L6 9H2v6h4l5 4V5zM22 9l-6 6M16 9l6 6" : "M11 5L6 9H2v6h4l5 4V5zM15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13");
     const t = $("setMute"), sub = $("setMuteSub");
     if (t) t.classList.toggle("on", !m);
-    if (sub) sub.textContent = (m ? "o'chiq" : "yoniq") + " · ⌥M";
+    if (sub) sub.textContent = (m ? "o'chiq" : "yoniq") + " · " + (IS_WIN ? "Alt+M" : "⌥M");
     renderLevel();
   }
   function renderSens() {
