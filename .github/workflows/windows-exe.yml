@@ -21,6 +21,12 @@ jobs:
       - name: Testlar
         run: uv run pytest -q -p no:cacheprovider
 
+      - name: Edge birinchi ishga tushirish oynasini o'chirish (CI'dagi yangi profil)
+        shell: pwsh
+        run: |
+          New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Edge" -Force | Out-Null
+          Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Edge" -Name HideFirstRunExperience -Value 1 -Type DWord
+
       - name: Windows smoke testi
         run: uv run python scripts/windows_smoke.py
 

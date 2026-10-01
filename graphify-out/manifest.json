@@ -282,15 +282,15 @@
     "semantic_hash": ""
   },
   "scripts/windows_smoke.py": {
-    "mtime": 1790847042.726676,
-    "seen": 1790847043.696488,
-    "ast_hash": "7c6bb6728e3edde0cee0a7b22012e6da",
+    "mtime": 1790847489.6055322,
+    "seen": 1790847507.841059,
+    "ast_hash": "4601d844616bc423017e67d1884042df",
     "semantic_hash": ""
   },
   "tests/test_windows.py": {
-    "mtime": 1790847239.19157,
-    "seen": 1790847259.073673,
-    "ast_hash": "6a9a57c690ef4d38888ef4b71dbcda85",
+    "mtime": 1790847466.399849,
+    "seen": 1790847507.841064,
+    "ast_hash": "db18dc35422c146775bac9bed95408c6",
     "semantic_hash": ""
   },
   ".github/workflows/windows-exe.yml": {
@@ -318,9 +318,9 @@
     "semantic_hash": ""
   },
   "nexus/windows_browser.py": {
-    "mtime": 1790847239.1913457,
-    "seen": 1790847259.073664,
-    "ast_hash": "0ccd830bf37ef5e8e6869d2021cba5a1",
+    "mtime": 1790847489.605439,
+    "seen": 1790847507.841055,
+    "ast_hash": "2a410f620b1fbb2e3199b1a8d7675c24",
     "semantic_hash": ""
   },
   "nexus/windows_video.py": {
